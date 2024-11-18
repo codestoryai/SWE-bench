@@ -23,6 +23,10 @@ class SWEbenchInstance(TypedDict):
     PASS_TO_PASS: str
     environment_setup_commit: str
 
+    def set_patch(self, patch: str) -> "SWEbenchInstance":
+        self["patch"] = patch
+        return self
+
 
 # Constants - Test Types, Statuses, Commands
 FAIL_TO_PASS = "FAIL_TO_PASS"
