@@ -1,5 +1,6 @@
 swebench==1.1.5
 jedi
+dump
 jedi-language-server
 pyright
 aiohttp-sse-client
