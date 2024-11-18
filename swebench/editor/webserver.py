@@ -2,12 +2,13 @@
 
 import asyncio
 import json
+from pathlib import Path
 import subprocess
 import jedi
 import aiohttp
 import os
 from aiohttp import web
-from typing import List
+from typing import Any, Dict, List, Tuple
 
 # This is set to tmp to start with, just to provide it a value for now
 DIR_NAME = "/tmp"
@@ -357,16 +358,19 @@ def create_get_diagnostics_handler(dir_name):
         return web.json_response({'diagnostics': results})
     return get_diagnostics_handler
 
+# test_cmd here is: test_cmd = lambda: Tuple[str, Dict[str, Any], Path]
 def create_test_endpoint(test_cmd):
     async def get_test_endpoint(request):
         # print("test-endpoint")
         data = await request.json()
         # print(data)
         # test_cmd is an async method, idk how to pass it as that type tho :(
-        passed, output = await test_cmd()
-        # print("test_output::output", output)
-        # print("test_output::passed", passed)
-        return web.json_response({'test_output': output, 'passed': passed})
+        # We should grab the exit code over here as well
+        _, output, test_output_path = await test_cmd()
+        with open(test_output_path, 'r') as file:
+            test_output = file.read()
+        output['test_output_file'] = test_output
+        return web.json_response({'test_output': test_output})
     return get_test_endpoint
 
 # TODO(skcd): Expose an endpoint for running the test cmd

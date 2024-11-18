@@ -1,8 +1,12 @@
 from __future__ import annotations
+import asyncio
+import subprocess
+from typing import Any, Dict, Tuple
 
 import docker
 import json
 import resource
+import time
 import traceback
 
 from argparse import ArgumentParser
@@ -10,12 +14,18 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from tqdm import tqdm
 
+from swebench.editor.setup_repo import checkout_repo
+from swebench.editor.sidecar import sidecar_run
+from swebench.editor.test_cmd import run_pre_existing_tests
 from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
     APPLY_PATCH_PASS,
     INSTANCE_IMAGE_BUILD_DIR,
     KEY_INSTANCE_ID,
+    KEY_MODEL,
+    KEY_PREDICTION,
     RUN_EVALUATION_LOG_DIR,
+    SWEbenchInstance,
 )
 from swebench.harness.docker_utils import (
     remove_image,
@@ -32,6 +42,10 @@ from swebench.harness.docker_build import (
     build_env_images,
     close_logger,
     setup_logger,
+)
+from swebench.editor import (
+    http_implementation,
+    webserver,
 )
 from swebench.harness.grading import get_eval_report
 from swebench.harness.test_spec import make_test_spec, TestSpec
@@ -51,6 +65,171 @@ class EvaluationError(Exception):
             f"Evaluation error for {self.instance_id}: {self.super_str}\n"
             f"Check ({self.log_file}) for more information."
         )
+
+def run_instance_for_test_path(
+    test_spec: TestSpec,
+    git_drname: str,
+    model_name_or_path: str,
+    client: docker.DockerClient,
+    run_id: str,
+    timeout: int | None = None,
+) -> Tuple[str, Dict[str, Any], Path]:
+    # Set up logging directory
+    instance_id = test_spec.instance_id
+    # This is the full path
+    model_name_or_path = model_name_or_path.replace("/", "__")
+    log_dir = RUN_EVALUATION_LOG_DIR / run_id / model_name_or_path / instance_id
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    # Link the image build dir in the log dir
+    build_dir = INSTANCE_IMAGE_BUILD_DIR / test_spec.instance_image_key.replace(":", "__")
+    image_build_link = log_dir / "image_build_dir"
+    if not image_build_link.exists():
+        try:
+            # link the image build dir in the log dir
+            image_build_link.symlink_to(build_dir.absolute(), target_is_directory=True)
+        except:
+            # some error, idk why
+            pass
+    log_file = log_dir / "run_instance.log"
+
+    # Set up report file + logger
+    report_path = log_dir / "report.json"
+    if report_path.exists():
+        return instance_id, json.loads(report_path.read_text())
+    logger = setup_logger(instance_id, log_file)
+
+
+    # Create the git diff as a patch string
+    try:
+        git_diff_output = subprocess.check_output(
+            ["git", "diff"], cwd=git_drname
+        ).decode("utf-8")
+        pred = {
+            "model_patch": git_diff_output,
+            "model_name_or_path": model_name_or_path,
+            "instance_id": instance_id,
+        }
+    except subprocess.CalledProcessError as e:
+        logger.error(f"Failed to create git diff: {e}")
+        raise EvaluationError(instance_id, "Failed to create git diff", logger)
+
+    # Run the instance
+    container = None
+    try:
+        # Build + start instance container (instance image should already be built)
+        container = build_container(test_spec, client, run_id, logger, False, False)
+        container.start()
+        logger.info(f"Container for {instance_id} started: {container.id}")
+
+        # Copy model prediction as patch file to container
+        patch_file = Path(log_dir / "patch.diff")
+        patch_file.write_text(pred["model_patch"] or "")
+        logger.info(
+            f"Intermediate patch for {instance_id} written to {patch_file}, now applying to container..."
+        )
+        copy_to_container(container, patch_file, Path("/tmp/patch.diff"))
+
+        # Attempt to apply patch to container
+        val = container.exec_run(
+            "git apply --allow-empty -v /tmp/patch.diff",
+            workdir="/testbed",
+            user="root",
+        )
+        if val.exit_code != 0:
+            logger.info(f"Failed to apply patch to container, trying again...")
+            
+            # try "patch --batch --fuzz=5 -p1 -i {patch_path}" to try again
+            val = container.exec_run(
+                "patch --batch --fuzz=5 -p1 -i /tmp/patch.diff",
+                workdir="/testbed",
+                user="root",
+            )
+            if val.exit_code != 0:
+                logger.info(f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}")
+                raise EvaluationError(
+                    instance_id,
+                    f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}",
+                    logger,
+                )
+            else:
+                logger.info(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
+        else:
+            logger.info(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
+
+        # Get git diff before running eval script
+        git_diff_output_before = (
+            container.exec_run("git diff", workdir="/testbed").output.decode("utf-8").strip()
+        )
+        logger.info(f"Git diff before:\n{git_diff_output_before}")
+
+        eval_file = Path(log_dir / "eval.sh")
+        eval_file.write_text(test_spec.eval_script)
+        logger.info(
+            f"Eval script for {instance_id} written to {eval_file}; copying to container..."
+        )
+        copy_to_container(container, eval_file, Path("/eval.sh"))
+
+        # Run eval script, write output to logs
+        test_output, timed_out, total_runtime = exec_run_with_timeout(container, "/bin/bash /eval.sh", timeout)
+        test_output_path = log_dir / "test_output.txt"
+        logger.info(f'Test runtime: {total_runtime:_.2f} seconds')
+        with open(test_output_path, "w") as f:
+            f.write(test_output)
+            logger.info(f"Test output for {instance_id} written to {test_output_path}")
+            if timed_out:
+                f.write(f"\n\nTimeout error: {timeout} seconds exceeded.")
+                raise EvaluationError(
+                    instance_id,
+                    f"Test timed out after {timeout} seconds.",
+                    logger,
+                )
+
+        # Get git diff after running eval script
+        git_diff_output_after = (
+            container.exec_run("git diff", workdir="/testbed").output.decode("utf-8").strip()
+        )
+
+        # Check if git diff changed after running eval script
+        logger.info(f"Git diff after:\n{git_diff_output_after}")
+        if git_diff_output_after != git_diff_output_before:
+            logger.info(f"Git diff changed after running eval script")
+
+        # Get report from test output
+        logger.info(f"Grading answer for {instance_id}...")
+        report = get_eval_report(
+            test_spec=test_spec,
+            prediction=pred,
+            log_path=test_output_path,
+            include_tests_status=True,
+        )
+        logger.info(
+            f"report: {report}\n"
+            f"Result for {instance_id}: resolved: {report[instance_id]['resolved']}"
+        )
+
+        # Write report to report.json
+        with open(report_path, "w") as f:
+            f.write(json.dumps(report, indent=4))
+        return instance_id, report, test_output_path
+    except EvaluationError as e:
+        error_msg = traceback.format_exc()
+        logger.info(error_msg)
+        print(e)
+    except BuildImageError as e:
+        error_msg = traceback.format_exc()
+        logger.info(error_msg)
+        print(e)
+    except Exception as e:
+        error_msg = (f"Error in evaluating model for {instance_id}: {e}\n"
+                     f"{traceback.format_exc()}\n"
+                     f"Check ({logger.log_file}) for more information.")
+        logger.error(error_msg)
+    finally:
+        # Remove instance container + image, close logger
+        cleanup_container(client, container, logger)
+        close_logger(logger)
+    return
 
 
 def run_instance(
@@ -288,6 +467,29 @@ def run_instances(
     print("All instances run.")
 
 
+def get_dataset_for_instances(
+    dataset_name: str,
+    split: str,
+    instance_ids: list,
+)-> list[SWEbenchInstance]:
+    """
+    Returns the instances which are part of the instance-ids and exludes any predictions
+    """
+    dataset = load_swebench_dataset(dataset_name, split)
+    filtered_dataset = []
+    for data_part in dataset:
+        data_instance_id = data_part["instance_id"]
+        instance_id_contained = False
+        for instance_id in instance_ids:
+            if instance_id == data_instance_id:
+                instance_id_contained = True
+        
+        if instance_id_contained:
+            filtered_dataset.append(data_part)
+
+    return filtered_dataset
+    
+
 def get_dataset_from_preds(
         dataset_name: str,
         split: str,
@@ -484,6 +686,120 @@ def get_gold_predictions(dataset_name: str, split: str):
     ]
 
 
+async def main_sidecar(
+    sidecar_executable_path: str,
+    dataset_name: str,
+    instance_ids: list,
+    predictions_path: str,
+    max_workers: int,
+    split: str,
+    run_id: str,
+    timeout: int,
+):
+    """
+    Runs the sidecar over here and run the instance we are interested in
+    This allows us to iterate against a complete flow
+    """
+    assert len(run_id) > 0, "Run ID must be provided and not empty"
+    resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
+
+    # Create prediction path based on top of the run-id
+    predictions_path = "predictions/" + run_id
+    # Make sure that this path exists
+    Path(predictions_path).mkdir(parents=True, exist_ok=True)
+    
+    dataset = get_dataset_for_instances(
+        dataset_name=dataset_name,
+        split=split,
+        instance_ids=instance_ids,
+    )
+    print(f"Running {len(dataset)} unevaluated instances...")
+
+    predictions = []
+    for dataset_part in dataset:
+        # Create predictions over here for each instance
+        # we will then load it from the prediction_directory path
+        # Now create the temporary git directory
+        git_tempdir = checkout_repo(dataset_part)
+        # We want to get the git_tempdir and then copy the git-diff to the patch
+        # for each change which we perform
+        # we only want the test_spec builder over here and then we figure out
+        # what to do
+        test_spec = make_test_spec(dataset_part)
+        test_cmd = lambda: run_instance_for_test_path(
+            test_spec=test_spec,
+            git_drname=git_tempdir,
+            model_name_or_path="sidecar",
+            client=docker.from_env(),
+            run_id=run_id,
+            timeout=timeout,
+        )
+        endpoint_url, editor_task = await http_implementation.setup_editor(
+            git_dname=git_tempdir,
+            test_cmd=test_cmd,
+        )
+        sidecar_run(
+            sidecar_path=sidecar_executable_path,
+            git_drname=git_tempdir,
+            endpoint_url=endpoint_url,
+            instance=dataset_part
+        )
+        # And cancel the editor task
+        editor_task.cancel()
+        # Now make sure that we are able to create a prediction for the instance
+        try:
+            git_diff_output = subprocess.check_output(
+                ["git", "diff"],
+                cwd=git_tempdir,
+            ).decode("utf-8")
+            predictions = {
+                KEY_INSTANCE_ID: dataset_part['instance_id'],
+                KEY_MODEL: "sidecar",
+                KEY_PREDICTION: git_diff_output,
+            }
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to create git diff: {e}")
+
+        # Now here we can start the sidecar binary somehow, we need to figure out
+        # how to make this work
+
+
+        try:
+        # Wait for the task to complete with a timeout
+            await asyncio.wait_for(editor_task, timeout=timeout)
+        except asyncio.TimeoutError:
+            print(f"Task did not complete within {timeout} seconds. Cancelling task...")
+            editor_task.cancel()
+            try:
+                await editor_task
+            except asyncio.CancelledError:
+                print("Task was successfully cancelled.")
+
+        continue
+
+    predictions = {pred[KEY_INSTANCE_ID]: pred for pred in predictions}
+
+    client = docker.from_env()
+    # Load the datasets from the predicitions
+    dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions, run_id)
+    full_dataset = load_swebench_dataset(dataset_name, split, instance_ids)
+    existing_images = list_images(client)
+    print(f"Running {len(dataset)} unevaluated instances...")
+    if not dataset:
+        print("No instances to run.")
+    else:
+        # build environment images + run instances
+        build_env_images(client, dataset, False, max_workers)
+        # Sets timeout to 1800 seconds or 30 minutes
+        # This is where it gets interesting since we want to poll for some time
+        # before getting the predictions over here
+        # This is the most important bit
+        run_instances(predictions, dataset, "none", False, False, max_workers, run_id, 1_800)
+
+    clean_images(client, existing_images, "none", False)
+    make_run_report(predictions, full_dataset, client, run_id)
+
+
 def main(
         dataset_name: str,
         split: str,
@@ -563,7 +879,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--clean", type=str2bool, default=False, help="Clean images above cache level"
     )
-    parser.add_argument("--run_id", type=str, required=True, help="Run ID - identifies the run")
+    parser.add_argument("--run_id", type=str, required=True, default=str(int(time.time())), help="Run ID - identifies the run")
+    parser.add("--sidecar_executable_path", type=str, help="Path to the sidecar binary")
     args = parser.parse_args()
 
-    main(**vars(args))
+    main_sidecar(**vars(args))
+    # main(**vars(args))
