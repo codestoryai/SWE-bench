@@ -1,4 +1,3 @@
-swebench==1.1.5
 jedi
 dump
 jedi-language-server
@@ -13,3 +12,4 @@ grep-ast==0.3.2
 tree-sitter-languages==1.10.2
 tree-sitter==0.21.3
 scipy
+docker

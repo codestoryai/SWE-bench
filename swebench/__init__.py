@@ -68,4 +68,15 @@ from swebench.versioning.utils import (
     split_instances,
 )
 
-import swebench.editor
+from swebench.editor.setup_repo import checkout_repo
+from swebench.editor.sidecar import sidecar_run
+from swebench.harness.constants import (
+    APPLY_PATCH_FAIL,
+    APPLY_PATCH_PASS,
+    INSTANCE_IMAGE_BUILD_DIR,
+    KEY_INSTANCE_ID,
+    KEY_MODEL,
+    KEY_PREDICTION,
+    RUN_EVALUATION_LOG_DIR,
+    SWEbenchInstance,
+)

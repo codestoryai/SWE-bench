@@ -16,7 +16,6 @@ from tqdm import tqdm
 
 from swebench.editor.setup_repo import checkout_repo
 from swebench.editor.sidecar import sidecar_run
-from swebench.editor.test_cmd import run_pre_existing_tests
 from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
     APPLY_PATCH_PASS,
@@ -853,6 +852,10 @@ def main(
     make_run_report(predictions, full_dataset, client, run_id)
 
 
+# Run the following command:
+# pip3 install -e .
+# and then run this binary from the root dir of this repo as:
+# python3 swebench/harness/run_evaluation.py --help
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--dataset_name", default="princeton-nlp/SWE-bench_Lite", type=str, help="Name of dataset or path to JSON file.")
@@ -880,7 +883,7 @@ if __name__ == "__main__":
         "--clean", type=str2bool, default=False, help="Clean images above cache level"
     )
     parser.add_argument("--run_id", type=str, required=True, default=str(int(time.time())), help="Run ID - identifies the run")
-    parser.add("--sidecar_executable_path", type=str, help="Path to the sidecar binary")
+    parser.add_argument("--sidecar_executable_path", type=str, help="Path to the sidecar binary")
     args = parser.parse_args()
 
     main_sidecar(**vars(args))
