@@ -245,13 +245,17 @@ def apply_edits(fs_file_path: str, edited_content: str, edit_range: dict):
 
     return new_range
 
-def create_terminal_handler(dir_name: str):
+def create_terminal_handler(terminal_command_runner):
+    # This needs to run in the docker after we have applied the patch,
+    # we can't just run it on our own because the dependencies might not work
+    # this also implies that we have to keep the same container hot and alive
+    # throughout the lifecycle of the run......
+    # in case the agent wants to install new packages etc (but should that ever happen?)
     async def terminal_handler(request):
         # print("file-open-handler")
         data = await request.json()
         command = data['command']
-        output = subprocess.check_output(command, cwd=dir_name).decode("utf-8")
-        print(output)
+        output = terminal_command_runner(command)
         return web.json_response({
             'output': output
         })
@@ -263,14 +267,22 @@ def create_file_open_handler(dir_name: str):
         data = await request.json()
         fs_file_path = dir_name + "/" + data['fs_file_path']
         # print(f"fs_file_path: {fs_file_path}")
-        with open(fs_file_path, 'r') as file:
-            content = file.read()
-        return web.json_response({
-            'fs_file_path': data['fs_file_path'],
-            'file_contents': content,
-            'language': 'python',
-            'exists': True,
-        })
+        try:
+            with open(fs_file_path, 'r') as file:
+                content = file.read()
+            return web.json_response({
+                'fs_file_path': data['fs_file_path'],
+                'file_contents': content,
+                'language': 'python',
+                'exists': True,
+            })
+        except Exception:
+            return web.json_response({
+                'fs_file_path': data['fs_file_path'],
+                'file_contents': '',
+                'language': 'python',
+                'exists': False,
+            })
     return file_open_handler
 
 def create_apply_edits_handler(dir_name: str):
@@ -414,7 +426,7 @@ def create_test_endpoint(test_cmd):
     return get_test_endpoint
 
 # TODO(skcd): Expose an endpoint for running the test cmd
-async def setup_webserver(dir_name: str, port: int, test_cmd) -> str:
+async def setup_webserver(dir_name: str, port: int, test_cmd, terminal_command_runner) -> str:
     """
     This function is going to setup the webserver for the jedi library
     """
@@ -431,7 +443,7 @@ async def setup_webserver(dir_name: str, port: int, test_cmd) -> str:
     app.router.add_post('/run_tests', create_test_endpoint(test_cmd))
     app.router.add_post('/rip_grep_path', create_rip_grep_handler)
     app.router.add_post('/file_open', create_file_open_handler(dir_name=dir_name))
-    app.router.add_post('/execute_terminal_command', create_terminal_handler(dir_name=dir_name))
+    app.router.add_post('/execute_terminal_command', create_terminal_handler(terminal_command_runner=terminal_command_runner))
     app.router.add_post('/terminal_output_new', create_terminal_output_new_handler)
     app.router.add_post('/new_exchange', create_new_exchange_handler)
     app.router.add_post('/recent_edits', create_recent_edits_handler)

@@ -12,6 +12,8 @@ import traceback
 from argparse import ArgumentParser
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+import docker.models
+import docker.models.containers
 from tqdm import tqdm
 
 from swebench.editor.setup_repo import checkout_repo
@@ -229,6 +231,76 @@ def run_instance_for_test_path(
         cleanup_container(client, container, logger)
         close_logger(logger)
     return
+
+
+def start_debug_environment(
+    test_spec: TestSpec,
+    client: docker.DockerClient,
+    run_id: str,
+) -> Tuple[docker.models.containers.Container, Path]:
+    """
+    Starts a debug container which we can use for the agent to freely run
+    commands and other things, this also sets up the environment properly
+    """
+    log_dir = RUN_EVALUATION_LOG_DIR / run_id / test_spec.instance_id / "debug_environment"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = log_dir / "run_instance.log"
+    logger = setup_logger(test_spec.instance_id, log_file)
+    container = build_container(test_spec, client, run_id, logger, False, False)
+    # Starts a debug container which we can use as our debug environment
+    container.start()
+    return [container, log_dir]
+
+def run_terminal_command(
+    command: str,
+    git_drname: str,
+    container: docker.models.containers.Container,
+    log_directory: Path,
+    timeout: int | None = None,
+) -> str:
+    """
+    Runs the terminal command on a persistent container which is running
+    This makes sure that we are able to reuse the same container over and over again
+    instead of spinning up a new one all the time
+    """
+    # First we stash all the pending changes which we might have done
+    container.exec_run("git stash")
+    # Now we get the patch file we are interested in
+    git_diff_output = subprocess.check_output(
+        ["git", "diff"], cwd=git_drname
+    ).decode("utf-8")
+    patch_file = Path(log_directory / "patch.diff")
+    patch_file.write_text(git_diff_output)
+    copy_to_container(container, patch_file, Path("/tmp/patch.diff"))
+    # Attempt to apply patch to container
+    val = container.exec_run(
+        "git apply --allow-empty -v /tmp/patch.diff",
+        workdir="/testbed",
+        user="root",
+    )
+    if val.exit_code != 0:
+        print(f"Failed to apply patch to container, trying again...")
+        
+        # try "patch --batch --fuzz=5 -p1 -i {patch_path}" to try again
+        val = container.exec_run(
+            "patch --batch --fuzz=5 -p1 -i /tmp/patch.diff",
+            workdir="/testbed",
+            user="root",
+        )
+        if val.exit_code != 0:
+            print(f"{APPLY_PATCH_FAIL}:\n{val.output.decode('utf-8')}")
+            raise KeyError()
+        else:
+            print(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
+    else:
+        print(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
+
+
+    # Now we have applied the patch, we can run the command we are interested in
+    # on the docker container
+    # /testbed is the directory where the repo is checked out
+    command_output = container.exec_run(f"/bin/bash {command}", workdir="/testbed").output.decode("utf-8").strip()
+    return command_output
 
 
 def run_instance(
@@ -726,6 +798,22 @@ async def main_sidecar(
         # we only want the test_spec builder over here and then we figure out
         # what to do
         test_spec = make_test_spec(dataset_part)
+        # This is our debug environment
+        # Do we leave strays running around if we cntrl+c (yes, we will do cleanups later)
+        debug_container_details = start_debug_environment(
+            test_spec=test_spec,
+            client=docker.from_env(),
+            run_id=run_id,
+        )
+        debug_container = debug_container_details[0]
+        log_directory = debug_container_details[1]
+        terminal_command_runner = lambda command: run_terminal_command(
+            command=command,
+            git_drname=git_tempdir,
+            container=debug_container,
+            log_directory=log_directory,
+            timeout=timeout,
+        )
         test_cmd = lambda: run_instance_for_test_path(
             test_spec=test_spec,
             git_drname=git_tempdir,
@@ -737,6 +825,7 @@ async def main_sidecar(
         endpoint_url, editor_task = await http_implementation.setup_editor(
             git_dname=git_tempdir,
             test_cmd=test_cmd,
+            terminal_command_runner=terminal_command_runner,
         )
         # sleep here is necessary so we are able to hit the endpoints
         await asyncio.sleep(2)
