@@ -324,6 +324,11 @@ def get_quick_fix(dir_name: str, fs_file_path: str, line: int, column: int):
     """
     pass
 
+async def create_recent_edits_handler(request):
+    return web.json_response({
+        'changed_files': [] 
+    })
+
 async def create_rip_grep_handler(request):
     # can we execute which rg and get the path here?
     import subprocess
@@ -420,6 +425,7 @@ async def setup_webserver(dir_name: str, port: int, test_cmd) -> str:
     app.router.add_post('/file_open', create_file_open_handler(dir_name=dir_name))
     app.router.add_post('/execute_terminal_command', create_terminal_handler(dir_name=dir_name))
     app.router.add_post('/new_exchange', create_new_exchange_handler)
+    app.router.add_post('/recent_edits', create_recent_edits_handler)
     # endpoint for terminal execution
     app.router.add_get("/", lambda _: web.Response(text="Hello, world"))
     runner = web.AppRunner(app)
