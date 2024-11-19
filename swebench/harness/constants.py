@@ -46,6 +46,8 @@ class TestStatus(Enum):
     ERROR = "ERROR"
     XFAIL = "XFAIL"
 
+# Test commands for various repositories, we can use these to execute the tests using
+# the test directive
 TEST_PYTEST = "pytest --no-header -rA --tb=no -p no:cacheprovider"
 TEST_PYTEST_VERBOSE = "pytest -rA --tb=long -p no:cacheprovider"
 TEST_ASTROPY_PYTEST = "pytest -rA -vv -o console_output_style=classic --tb=no"
