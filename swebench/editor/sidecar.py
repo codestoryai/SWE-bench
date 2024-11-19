@@ -19,7 +19,7 @@ def sidecar_run(
         ]
         json_data = {
             "git_drname": git_drname,
-            "instance": instance.to_dict()  # Assuming instance has a method to_dict()
+            "instance": instance,
         }
         temp_file_path = os.path.join(tmp_path, 'data.json')
         with open(temp_file_path, 'w') as temp_file:
@@ -31,6 +31,8 @@ def sidecar_run(
         command_args.append("1800")
         command_args.append("--editor-url")
         command_args.append(endpoint_url)
+
+        print("sidecar_binary_args", command_args)
 
         process = subprocess.Popen(
             command_args,

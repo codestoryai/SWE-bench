@@ -733,7 +733,7 @@ async def main_sidecar(
             run_id=run_id,
             timeout=timeout,
         )
-        endpoint_url, editor_task = await http_implementation.setup_editor(
+        endpoint_url, editor_task = http_implementation.setup_editor(
             git_dname=git_tempdir,
             test_cmd=test_cmd,
         )
@@ -766,7 +766,7 @@ async def main_sidecar(
         try:
         # Wait for the task to complete with a timeout
             await asyncio.wait_for(editor_task, timeout=timeout)
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError or asyncio.CancelledError:
             print(f"Task did not complete within {timeout} seconds. Cancelling task...")
             editor_task.cancel()
             try:
