@@ -25,6 +25,7 @@ def sidecar_run(
         with open(temp_file_path, 'w') as temp_file:
             json.dump(json_data, temp_file)
 
+        command_args.append("--input")
         command_args.append(temp_file_path)
         command_args.append("--timeout")
         command_args.append("1800")

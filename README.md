@@ -144,3 +144,7 @@ MIT. Check `LICENSE.md`.
 
 ## Codestory
 We are going to reuse the harness here for our own use-case
+Install the library using:
+```bash
+pip3 install -e .
+```
