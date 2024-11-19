@@ -737,35 +737,33 @@ async def main_sidecar(
             git_dname=git_tempdir,
             test_cmd=test_cmd,
         )
+        print("run_evaluation::endpoint_url", endpoint_url)
         sidecar_run(
             sidecar_path=sidecar_executable_path,
             git_drname=git_tempdir,
             endpoint_url=endpoint_url,
             instance=dataset_part
         )
-        # And cancel the editor task
-        editor_task.cancel()
-        # Now make sure that we are able to create a prediction for the instance
+
+        # Create the predictions by looking at the git-diff output
+        # this needs to be in the special format mentioned over here
         try:
             git_diff_output = subprocess.check_output(
                 ["git", "diff"],
                 cwd=git_tempdir,
             ).decode("utf-8")
-            predictions = {
+            predictions.append({
                 KEY_INSTANCE_ID: dataset_part['instance_id'],
                 KEY_MODEL: "sidecar",
                 KEY_PREDICTION: git_diff_output,
-            }
+            })
         except subprocess.CalledProcessError as e:
             print(f"Failed to create git diff: {e}")
 
-        # Now here we can start the sidecar binary somehow, we need to figure out
-        # how to make this work
-
 
         try:
-        # Wait for the task to complete with a timeout
-            await asyncio.wait_for(editor_task, timeout=timeout)
+            # Wait for the task to complete with a timeout
+            editor_task.cancel()
         except asyncio.TimeoutError or asyncio.CancelledError:
             print(f"Task did not complete within {timeout} seconds. Cancelling task...")
             editor_task.cancel()
@@ -776,6 +774,7 @@ async def main_sidecar(
 
         continue
 
+    print("run_evaluation::predictions", len(predictions))
     predictions = {pred[KEY_INSTANCE_ID]: pred for pred in predictions}
 
     client = docker.from_env()
