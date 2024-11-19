@@ -10,6 +10,7 @@ def sidecar_run(
     git_drname: str,
     endpoint_url: str,
     instance: SWEbenchInstance,
+    run_id: str,
 ):
     with tempfile.TemporaryDirectory() as tmpdirname:
         tmp_path = tmpdirname
@@ -32,6 +33,11 @@ def sidecar_run(
         command_args.append("--editor-url")
         command_args.append(endpoint_url)
 
+        command_args.append("--run-id")
+        command_args.append(run_id)
+
+        command_args.append("--anthropic-api-key")
+        command_args.append("")
         print("sidecar_binary_args", command_args)
 
         process = subprocess.Popen(
