@@ -689,11 +689,11 @@ async def main_sidecar(
     sidecar_executable_path: str,
     dataset_name: str,
     instance_ids: list,
-    predictions_path: str,
     max_workers: int,
     split: str,
     run_id: str,
     timeout: int,
+    **kwargs,
 ):
     """
     Runs the sidecar over here and run the instance we are interested in
@@ -861,7 +861,8 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_name", default="princeton-nlp/SWE-bench_Lite", type=str, help="Name of dataset or path to JSON file.")
     parser.add_argument("--split", type=str, default="test", help="Split of the dataset")
     parser.add_argument("--instance_ids", nargs="+", type=str, help="Instance IDs to run (space separated)")
-    parser.add_argument("--predictions_path", type=str, help="Path to predictions file - if 'gold', uses gold predictions", required=True)
+    # Remove predicitons paths for now, we can reintroduce it later on
+    # parser.add_argument("--predictions_path", type=str, help="Path to predictions file - if 'gold', uses gold predictions", required=True)
     parser.add_argument("--max_workers", type=int, default=4, help="Maximum number of workers (should be <= 75%% of CPU cores)")
     parser.add_argument("--open_file_limit", type=int, default=4096, help="Open file limit")
     parser.add_argument(
@@ -882,9 +883,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--clean", type=str2bool, default=False, help="Clean images above cache level"
     )
-    parser.add_argument("--run_id", type=str, required=True, default=str(int(time.time())), help="Run ID - identifies the run")
+    parser.add_argument("--run_id", type=str, default=str(int(time.time())), help="Run ID - identifies the run")
     parser.add_argument("--sidecar_executable_path", type=str, help="Path to the sidecar binary")
     args = parser.parse_args()
 
-    main_sidecar(**vars(args))
+    # Run the sidecar harness in an asyncio event loop
+    asyncio.get_event_loop().run_until_complete(main_sidecar(**vars(args)))
+    # main_sidecar(**vars(args))
     # main(**vars(args))
