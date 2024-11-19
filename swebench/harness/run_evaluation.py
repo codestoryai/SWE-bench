@@ -294,7 +294,6 @@ def run_terminal_command(
         workdir="/testbed",
         user="root",
     )
-    print("patch-output", val.output)
     if val.exit_code != 0:
         print(f"Failed to apply patch to container, trying again...")
         
@@ -858,7 +857,10 @@ async def main_sidecar(
         )
 
         # Stop our debug container over here
+        print("Stopping debug container", debug_container.id)
         debug_container.stop()
+        print("Removing debug container", debug_container.id)
+        debug_container.remove()
 
         # Create the predictions by looking at the git-diff output
         # this needs to be in the special format mentioned over here

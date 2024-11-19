@@ -442,6 +442,7 @@ def build_instance_image(
     try:
         env_image = client.images.get(env_image_name)
     except docker.errors.ImageNotFound as e:
+        print('docker.errors.buildimageerror')
         raise BuildImageError(
             test_spec.instance_id,
             f"Environment image {env_image_name} not found for {test_spec.instance_id}",
