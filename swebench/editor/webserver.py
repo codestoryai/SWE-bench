@@ -376,7 +376,7 @@ def create_go_to_definition_handler(dir_name):
     async def go_to_definition_handler(request):
         # print("go-to-definition-handler")
         data = await request.json()
-        fs_file_path = dir_name + '/' + data['fs_file_path']
+        fs_file_path = data['fs_file_path']
         position = data['position']
         line = int(position['line'])
         column = int(position['character'])
@@ -389,7 +389,7 @@ def create_go_to_implementation_handler(dir_name):
     async def go_to_implementation_handler(request):
         # print('go_to_implementation_handler')
         data = await request.json()
-        fs_file_path = dir_name + '/' + data['fs_file_path']
+        fs_file_path = data['fs_file_path']
         position = data['position']
         line = int(position['line'])
         column = int(position['character'])
@@ -401,7 +401,7 @@ def create_get_diagnostics_handler(dir_name):
     async def get_diagnostics_handler(request):
         # print('get_diagnotics_handler')
         data = await request.json()
-        fs_file_path = dir_name + '/' + data['fs_file_path']
+        fs_file_path = data['fs_file_path']
         range = data['range']
         # position = data['position']
         # line = int(position['line'])
@@ -415,10 +415,11 @@ def create_test_endpoint(test_cmd):
     async def get_test_endpoint(request):
         # print("test-endpoint")
         data = await request.json()
+        files_to_test = data['fs_file_paths']
         # print(data)
         # test_cmd is an async method, idk how to pass it as that type tho :(
         # We should grab the exit code over here as well
-        _, output, test_output_path = await test_cmd()
+        _, output, test_output_path = await test_cmd(files_to_test)
         with open(test_output_path, 'r') as file:
             test_output = file.read()
         output['test_output_file'] = test_output

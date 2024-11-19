@@ -50,7 +50,7 @@ from swebench.editor import (
     webserver,
 )
 from swebench.harness.grading import get_eval_report
-from swebench.harness.test_spec import make_test_spec, TestSpec
+from swebench.harness.test_spec import make_eval_script_for_test_files, make_test_spec, TestSpec
 from swebench.harness.utils import load_swebench_dataset, str2bool
 
 
@@ -83,17 +83,20 @@ class EvaluationError(Exception):
 
 def run_instance_for_test_path(
     test_spec: TestSpec,
+    instance: SWEbenchInstance,
     git_drname: str,
     model_name_or_path: str,
     client: docker.DockerClient,
     run_id: str,
+    test_files: List[str],
+    container: docker.models.containers.Container,
     timeout: int | None = None,
 ) -> Tuple[str, Dict[str, Any], Path]:
     # Set up logging directory
     instance_id = test_spec.instance_id
     # This is the full path
     model_name_or_path = model_name_or_path.replace("/", "__")
-    log_dir = RUN_EVALUATION_LOG_DIR / run_id / model_name_or_path / instance_id
+    log_dir = RUN_EVALUATION_LOG_DIR / run_id / model_name_or_path / instance_id / "test_output"
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # Link the image build dir in the log dir
@@ -129,13 +132,8 @@ def run_instance_for_test_path(
         logger.error(f"Failed to create git diff: {e}")
         raise EvaluationError(instance_id, "Failed to create git diff", logger)
 
-    # Run the instance
-    container = None
     try:
-        # Build + start instance container (instance image should already be built)
-        container = build_container(test_spec, client, run_id, logger, False, False)
-        container.start()
-        logger.info(f"Container for {instance_id} started: {container.id}")
+        logger.info(f"Container for {instance_id} already started: {container.id}")
 
         # Copy model prediction as patch file to container
         patch_file = Path(log_dir / "patch.diff")
@@ -147,7 +145,7 @@ def run_instance_for_test_path(
 
         # Attempt to apply patch to container
         val = container.exec_run(
-            "git apply --allow-empty -v /tmp/patch.diff",
+            "git apply -v /tmp/patch.diff",
             workdir="/testbed",
             user="root",
         )
@@ -178,8 +176,20 @@ def run_instance_for_test_path(
         )
         logger.info(f"Git diff before:\n{git_diff_output_before}")
 
+        # Creating the eval script
         eval_file = Path(log_dir / "eval.sh")
-        eval_file.write_text(test_spec.eval_script)
+
+        # The following is taken from the TestSpec generation but we are reusing the logic
+        # here so we can run the tests and any tests as we want
+        eval_script_list = make_eval_script_for_test_files(
+            env_name="testbed",
+            repo_directory="/testbed",
+            files=test_files,
+            git_drname=git_drname,
+            instance=instance,
+        )
+        eval_script = "\n".join(["#!/bin/bash", "set -uxo pipefail"] + eval_script_list) + "\n"
+        eval_file.write_text(eval_script)
         logger.info(
             f"Eval script for {instance_id} written to {eval_file}; copying to container..."
         )
@@ -241,9 +251,12 @@ def run_instance_for_test_path(
                      f"Check ({logger.log_file}) for more information.")
         logger.error(error_msg)
     finally:
+        pass
+        # No need to pause anything as we are reusing the resources
+        # during a single run
         # Remove instance container + image, close logger
-        cleanup_container(client, container, logger)
-        close_logger(logger)
+        # cleanup_container(client, container, logger)
+        # close_logger(logger)
     return
 
 
@@ -824,6 +837,7 @@ async def main_sidecar(
         debug_container = debug_container_details[0]
         DEV_DOCKER_CONTAINERS.append(debug_container)
         log_directory = debug_container_details[1]
+        # Lambda which executes the terminal command
         terminal_command_runner = lambda command: run_terminal_command(
             command=command,
             git_drname=git_tempdir,
@@ -831,17 +845,20 @@ async def main_sidecar(
             log_directory=log_directory,
             timeout=timeout,
         )
-        test_cmd = lambda: run_instance_for_test_path(
+        # Lambda which executes the test command
+        test_command = lambda files: run_instance_for_test_path(
             test_spec=test_spec,
             git_drname=git_tempdir,
             model_name_or_path="sidecar",
             client=docker.from_env(),
             run_id=run_id,
+            test_files=files,
+            container=debug_container,
             timeout=timeout,
         )
         endpoint_url, editor_task = await http_implementation.setup_editor(
             git_dname=git_tempdir,
-            test_cmd=test_cmd,
+            test_cmd=test_command,
             terminal_command_runner=terminal_command_runner,
         )
         # sleep here is necessary so we are able to hit the endpoints
