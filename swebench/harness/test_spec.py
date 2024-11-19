@@ -71,17 +71,17 @@ class TestSpec:
 
         Note that old images are not automatically deleted, so consider cleaning up old images periodically.
         """
-        return "swebench/sweb.eval.x86_64.django_1776_django-13033:v1"
-        hash_object = hashlib.sha256()
-        hash_object.update(str(self.env_script_list).encode("utf-8"))
-        hash_value = hash_object.hexdigest()
-        val = hash_value[:22]  # 22 characters is still very likely to be unique
-        return f"sweb.env.{self.arch}.{val}:latest"
+        # the instance_id over here is always in the format:
+        # reponame__reponame-{pull_request_id}
+        # so we first split it on the `__` and get the second half o the portion
+        # and then use the first part and format our docker image name
+        parts = self.instance_id.split('__')
+        return f"swebench/sweb.eval.x86_64.{parts[0]}_1776_{parts[1]}:v1"
 
     @property
     def instance_image_key(self):
-        return "swebench/sweb.eval.x86_64.django_1776_django-13033:v1"
-        return f"swebench/sweb.eval.{self.arch}.{self.instance_id}:v1"
+        # Returns the same name as the env_image_name
+        return self.env_image_key
 
     def get_instance_container_name(self, run_id=None):
         if not run_id:
