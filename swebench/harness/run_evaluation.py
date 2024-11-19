@@ -742,7 +742,8 @@ async def main_sidecar(
             sidecar_path=sidecar_executable_path,
             git_drname=git_tempdir,
             endpoint_url=endpoint_url,
-            instance=dataset_part
+            instance=dataset_part,
+            run_id=run_id,
         )
 
         # Create the predictions by looking at the git-diff output
