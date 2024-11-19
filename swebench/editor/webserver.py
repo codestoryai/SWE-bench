@@ -324,6 +324,11 @@ def get_quick_fix(dir_name: str, fs_file_path: str, line: int, column: int):
     """
     pass
 
+async def create_terminal_output_new_handler(request):
+    return web.json_response({
+        'output': None,
+    })
+
 async def create_recent_edits_handler(request):
     return web.json_response({
         'changed_files': [] 
@@ -425,7 +430,8 @@ async def setup_webserver(dir_name: str, port: int, test_cmd) -> str:
     app.router.add_post('/run_tests', create_test_endpoint(test_cmd))
     app.router.add_post('/rip_grep_path', create_rip_grep_handler)
     app.router.add_post('/file_open', create_file_open_handler(dir_name=dir_name))
-    app.router.add_post('/terminal_output_new', create_terminal_handler(dir_name=dir_name))
+    app.router.add_post('/execute_terminal_command', create_terminal_handler(dir_name=dir_name))
+    app.router.add_post('/terminal_output_new', create_terminal_output_new_handler)
     app.router.add_post('/new_exchange', create_new_exchange_handler)
     app.router.add_post('/recent_edits', create_recent_edits_handler)
     # endpoint for terminal execution
