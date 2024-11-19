@@ -153,3 +153,16 @@ pip3 install -e .
 - We probably want to git clone the repo just once, not always. It feels very slow
 - Ideally we can create a checkout locally once and clean it up at the start if there are changes which are happening to the repo
 - If debugging on mac, use this link to unblock if the `docker.from_env()` errors out: https://arc.net/l/quote/vuivabtj
+
+## How does test execution work?
+- Test execution is very involved over here, we need to setup the container properly to make sure that the environment is alive and up so we are able to run it properly
+- Generally for running the test we just need the file path (relative to the root-dir) and then run the tests properly using the TEST_RUN_COMMAND
+- looking at any eval_script creation work should give good hints
+grep here
+```py
+    eval_script_list = make_eval_script_list(
+        instance, specs, env_name, repo_directory, base_commit, test_patch
+    )
+```
+- The above function is how we generate it, we also want to make sure that here the instance which is of type SWEBenchInstance looks daunting but in reality for the test generation we use a regular expression (grep for `diff_pat = r"diff --git a/.* b/(.*)"`) this looks at the git diff and generates the tests using the derived files
+- The better way to go about doing this is to also make sure that we can discover the tests on our own by using some AI and augmenting them a bit more for our use-case
