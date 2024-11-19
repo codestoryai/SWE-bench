@@ -152,3 +152,4 @@ pip3 install -e .
 ## Codestory Iteration loop issues
 - We probably want to git clone the repo just once, not always. It feels very slow
 - Ideally we can create a checkout locally once and clean it up at the start if there are changes which are happening to the repo
+- If debugging on mac, use this link to unblock if the `docker.from_env()` errors out: https://arc.net/l/quote/vuivabtj
