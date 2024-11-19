@@ -33,6 +33,7 @@ async def sidecar_run(
             "--editor-url", endpoint_url,
             "--run-id", run_id,
             "--anthropic-api-key", anthropic_api_key,
+            "--repo-name", instance["repo"],
         ])
         print("sidecar_binary_args", command_args)
 
