@@ -127,6 +127,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+swe_bench/
 
 # Spyder project settings
 .spyderproject
