@@ -265,7 +265,7 @@ def create_file_open_handler(dir_name: str):
     async def file_open_handler(request):
         # print("file-open-handler")
         data = await request.json()
-        fs_file_path = dir_name + "/" + data['fs_file_path']
+        fs_file_path = data['fs_file_path']
         # print(f"fs_file_path: {fs_file_path}")
         try:
             with open(fs_file_path, 'r') as file:
