@@ -740,7 +740,7 @@ async def main_sidecar(
         # sleep here is necessary so we are able to hit the endpoints
         await asyncio.sleep(2)
         print("run_evaluation::endpoint_url", endpoint_url)
-        sidecar_run(
+        await sidecar_run(
             sidecar_path=sidecar_executable_path,
             git_drname=git_tempdir,
             endpoint_url=endpoint_url,

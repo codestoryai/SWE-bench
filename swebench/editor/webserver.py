@@ -342,6 +342,7 @@ async def create_rip_grep_handler(request):
 
 async def create_new_exchange_handler(request):
     import uuid
+    data = await request.json()
     return web.json_response({
         'exchange_id': uuid.uuid4() 
     })

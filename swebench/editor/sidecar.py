@@ -1,11 +1,11 @@
 import json
 import os
 import tempfile
-import subprocess
+import asyncio
 from swebench.harness.constants import SWEbenchInstance
 
 
-def sidecar_run(
+async def sidecar_run(
     sidecar_path: str,
     git_drname: str,
     endpoint_url: str,
@@ -26,39 +26,34 @@ def sidecar_run(
         with open(temp_file_path, 'w') as temp_file:
             json.dump(json_data, temp_file)
 
-        command_args.append("--input")
-        command_args.append(temp_file_path)
-        command_args.append("--timeout")
-        command_args.append("1800")
-        command_args.append("--editor-url")
-        command_args.append(endpoint_url)
+        command_args.extend([
+            "--input", temp_file_path,
+            "--timeout", "1800",
+            "--editor-url", endpoint_url,
+            "--run-id", run_id,
+            "--anthropic-api-key", "",
+        ])
 
-        command_args.append("--run-id")
-        command_args.append(run_id)
-
-        command_args.append("--anthropic-api-key")
-        command_args.append("")
         print("sidecar_binary_args", command_args)
 
-        process = subprocess.Popen(
-            command_args,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,  # Ensures output is decoded as text (str) instead of bytes
+        process = await asyncio.create_subprocess_exec(
+            *command_args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
         )
 
-        # Stream and print stdout and stderr in real-time
-        try:
-            for line in process.stdout:
-                print(f"STDOUT: {line.strip()}")
-            for line in process.stderr:
-                print(f"STDERR: {line.strip()}")
-        except Exception as e:
-            print(f"Error while streaming process output: {e}")
+        async def read_stream(stream, name):
+            async for line in stream:
+                print(f"{name}: {line.decode().strip()}")
 
-        # Wait for process to complete
-        process.wait()
+        # Concurrently read stdout and stderr
+        await asyncio.gather(
+            read_stream(process.stdout, "STDOUT"),
+            read_stream(process.stderr, "STDERR"),
+        )
 
-        # Check the exit code
-        if process.returncode != 0:
-            raise RuntimeError(f"Sidecar process failed with return code {process.returncode}")
+        # Wait for the process to complete
+        return_code = await process.wait()
+
+        if return_code != 0:
+            raise RuntimeError(f"Sidecar process failed with return code {return_code}")
