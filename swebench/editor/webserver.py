@@ -245,6 +245,17 @@ def apply_edits(fs_file_path: str, edited_content: str, edit_range: dict):
 
     return new_range
 
+def create_terminal_handler(dir_name: str):
+    async def terminal_handler(request):
+        # print("file-open-handler")
+        data = await request.json()
+        command = data['command']
+        output = subprocess.check_output(command, cwd=dir_name).decode("utf-8")
+        return web.json_response({
+            'output': output
+        })
+    return terminal_handler
+
 def create_file_open_handler(dir_name: str):
     async def file_open_handler(request):
         # print("file-open-handler")
@@ -312,6 +323,23 @@ def get_quick_fix(dir_name: str, fs_file_path: str, line: int, column: int):
     This function is going to return the quick fix on the file
     """
     pass
+
+async def create_rip_grep_handler(request):
+    # can we execute which rg and get the path here?
+    import subprocess
+    rip_grep_path = subprocess.check_output(
+        ["which", "rg"],
+    ).decode("utf-8")
+    return web.json_response({
+        'rip_grep_path': rip_grep_path
+    })
+
+
+async def create_new_exchange_handler(request):
+    import uuid
+    return web.json_response({
+        'exchange_id': uuid.uuid4() 
+    })
 
 async def get_quick_fix_handler(request):
     data = await request.json()
@@ -388,7 +416,10 @@ async def setup_webserver(dir_name: str, port: int, test_cmd) -> str:
     app.router.add_post('/invoke_quick_fix', invoke_quick_fix_handler)
     app.router.add_post('/select_quick_fix', get_quick_fix_handler)
     app.router.add_post('/run_tests', create_test_endpoint(test_cmd))
+    app.router.add_post('/rip_grep_path', create_rip_grep_handler)
     app.router.add_post('/file_open', create_file_open_handler(dir_name=dir_name))
+    app.router.add_post('/execute_terminal_command', create_terminal_handler(dir_name=dir_name))
+    app.router.add_post('/new_exchange', create_new_exchange_handler)
     # endpoint for terminal execution
     app.router.add_get("/", lambda _: web.Response(text="Hello, world"))
     runner = web.AppRunner(app)
