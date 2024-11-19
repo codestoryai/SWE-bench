@@ -411,6 +411,7 @@ async def setup_webserver(dir_name: str, port: int, test_cmd) -> str:
     """
     This function is going to setup the webserver for the jedi library
     """
+    print("setup_webserver_endpoint")
     DIR_NAME = dir_name
     app = web.Application()
     app.router.add_post('/go_to_references', go_to_references_handler)

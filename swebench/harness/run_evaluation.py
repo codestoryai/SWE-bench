@@ -733,10 +733,12 @@ async def main_sidecar(
             run_id=run_id,
             timeout=timeout,
         )
-        endpoint_url, editor_task = http_implementation.setup_editor(
+        endpoint_url, editor_task = await http_implementation.setup_editor(
             git_dname=git_tempdir,
             test_cmd=test_cmd,
         )
+        # sleep here is necessary so we are able to hit the endpoints
+        await asyncio.sleep(2)
         print("run_evaluation::endpoint_url", endpoint_url)
         sidecar_run(
             sidecar_path=sidecar_executable_path,
@@ -887,7 +889,10 @@ if __name__ == "__main__":
     parser.add_argument("--sidecar_executable_path", type=str, help="Path to the sidecar binary")
     args = parser.parse_args()
 
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     # Run the sidecar harness in an asyncio event loop
-    asyncio.get_event_loop().run_until_complete(main_sidecar(**vars(args)))
+    asyncio.run(main_sidecar(**vars(args)))
     # main_sidecar(**vars(args))
     # main(**vars(args))
