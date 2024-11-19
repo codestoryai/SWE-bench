@@ -352,7 +352,7 @@ async def create_rip_grep_handler(request):
     import subprocess
     rip_grep_path = subprocess.check_output(
         ["which", "rg"],
-    ).decode("utf-8")
+    ).decode("utf-8").strip()
     return web.json_response({
         'rip_grep_path': rip_grep_path
     })
