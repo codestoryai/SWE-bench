@@ -8,7 +8,7 @@ from argparse import ArgumentTypeError
 from datasets import Dataset, load_dataset
 from dotenv import load_dotenv
 from functools import cache
-from typing import cast
+from typing import List, cast
 
 from swebench.harness.constants import (
     SWEbenchInstance,
@@ -287,6 +287,30 @@ def get_requirements(instance: SWEbenchInstance) -> str:
     )
 
     return get_requirements_by_commit(instance["repo"], commit)
+
+
+# The files parameter here is relative to the local fs path and not the docker
+# so we have to relaitvize it with respect to the docker
+def get_test_directives_for_files(instance: SWEbenchInstance, local_fs_file_path_aboslute: List[str], git_dirname: str) -> List[str]:
+    # For seq2seq code repos, testing command is fixed
+    if instance["repo"] == "swe-bench/humaneval":
+        return ["test.py"]
+
+    # Get test directives from test patch and remove non-test files
+    directives = [ file.removeprefix(f"{git_dirname}/") for file in local_fs_file_path_aboslute]
+    directives = [
+        d for d in directives if not any(d.endswith(ext) for ext in NON_TEST_EXTS)
+    ]
+
+    # For Django tests, remove extension + "tests/" prefix and convert slashes to dots (module referencing)
+    if instance["repo"] == "django/django":
+        directives_transformed = []
+        for d in directives:
+            d = d[: -len(".py")] if d.endswith(".py") else d
+            d = d[len("tests/") :] if d.startswith("tests/") else d
+            d = d.replace("/", ".")
+            directives_transformed.append(d)
+        directives = directives_transformed
 
 
 def get_test_directives(instance: SWEbenchInstance) -> list:

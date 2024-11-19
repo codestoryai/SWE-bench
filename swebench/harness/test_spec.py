@@ -6,7 +6,7 @@ import platform
 import re
 
 from dataclasses import dataclass
-from typing import Any, Union, cast
+from typing import Any, List, Union, cast
 
 from swebench.harness.constants import (
     SWEbenchInstance,
@@ -26,6 +26,7 @@ from swebench.harness.utils import (
     get_requirements,
     get_environment_yml,
     get_test_directives,
+    get_test_directives_for_files,
 )
 
 DIFF_MODIFIED_FILE_REGEX = r"--- a/(.*)"
@@ -231,6 +232,43 @@ def make_env_script_list(instance: SWEbenchInstance, specs: dict, env_name: str)
         cmd = f"python -m pip install {pip_packages}"
         reqs_commands.append(cmd)
     return reqs_commands
+
+def make_eval_script_for_test_files(instance: SWEbenchInstance, specs, env_name: str, repo_directory: str, files: List[str], git_drname: str):
+    """
+    Creates the eval script for the test files which we want to run
+    This assumes that the repository is already ready with the changes which we
+    have and our expectation is to run the test in the files which we are interested in
+    """
+    base_commit = instance['base_commit']
+    test_command = " ".join(
+        [
+            MAP_REPO_VERSION_TO_SPECS[instance["repo"]][instance["version"]]["test_cmd"],
+            *get_test_directives_for_files(instance, files, git_dirname=git_drname),
+        ]
+    )
+    eval_commands = [
+        "source /opt/miniconda3/bin/activate",
+        f"conda activate {env_name}",
+        f"cd {repo_directory}",
+    ]
+    if "eval_commands" in specs:
+        eval_commands += specs["eval_commands"]
+    eval_commands += [
+        f"git config --global --add safe.directory {repo_directory}",  # for nonroot user
+        f"cd {repo_directory}",
+        # This is just informational, so we have a record
+        "git status",
+        "git show",
+        f"git diff {base_commit}",
+        "source /opt/miniconda3/bin/activate",
+        f"conda activate {env_name}",
+    ]
+    if "install" in specs:
+        eval_commands.append(specs["install"])
+    eval_commands += [
+        test_command,
+    ]
+    return eval_commands
 
 
 def make_eval_script_list(instance, specs, env_name, repo_directory, base_commit, test_patch):
