@@ -33,7 +33,6 @@ async def sidecar_run(
             "--run-id", run_id,
             "--anthropic-api-key", "",
         ])
-
         print("sidecar_binary_args", command_args)
 
         process = await asyncio.create_subprocess_exec(
