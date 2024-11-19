@@ -285,13 +285,16 @@ def run_terminal_command(
     ).decode("utf-8")
     patch_file = Path(log_directory / "patch.diff")
     patch_file.write_text(git_diff_output)
+    print("git_diff_output", git_diff_output)
     copy_to_container(container, patch_file, Path("/tmp/patch.diff"))
     # Attempt to apply patch to container
     val = container.exec_run(
-        "git apply --allow-empty -v /tmp/patch.diff",
+        "git apply -v /tmp/patch.diff",
+        # "git apply --allow-empty -v /tmp/patch.diff",
         workdir="/testbed",
         user="root",
     )
+    print("patch-output", val.output)
     if val.exit_code != 0:
         print(f"Failed to apply patch to container, trying again...")
         
@@ -853,6 +856,9 @@ async def main_sidecar(
             run_id=run_id,
             anthropic_api_key=anthropic_api_key,
         )
+
+        # Stop our debug container over here
+        debug_container.stop()
 
         # Create the predictions by looking at the git-diff output
         # this needs to be in the special format mentioned over here
