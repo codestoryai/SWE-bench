@@ -1,12 +1,13 @@
 from __future__ import annotations
 import asyncio
 import subprocess
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
 import docker
 import json
 import resource
 import time
+import signal
 import traceback
 
 from argparse import ArgumentParser
@@ -51,6 +52,19 @@ from swebench.editor import (
 from swebench.harness.grading import get_eval_report
 from swebench.harness.test_spec import make_test_spec, TestSpec
 from swebench.harness.utils import load_swebench_dataset, str2bool
+
+
+# Contains all the running docker container which are in the dev-loop and their reference
+DEV_DOCKER_CONTAINERS: List[docker.models.containers.Container] = []
+
+def signal_handler(sig, frame):
+    print("Stopping dev docker containers....")
+    for container in DEV_DOCKER_CONTAINERS:
+        print("Stopping {}", container.id)
+        container.stop()
+        print("Stopped {}", container.id)
+
+signal.signal(signal.SIGINT, signal_handler)
 
 
 class EvaluationError(Exception):
@@ -806,6 +820,7 @@ async def main_sidecar(
             run_id=run_id,
         )
         debug_container = debug_container_details[0]
+        DEV_DOCKER_CONTAINERS.append(debug_container)
         log_directory = debug_container_details[1]
         terminal_command_runner = lambda command: run_terminal_command(
             command=command,
