@@ -251,6 +251,7 @@ def create_terminal_handler(dir_name: str):
         data = await request.json()
         command = data['command']
         output = subprocess.check_output(command, cwd=dir_name).decode("utf-8")
+        print(output)
         return web.json_response({
             'output': output
         })

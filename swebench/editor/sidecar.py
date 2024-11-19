@@ -11,6 +11,7 @@ async def sidecar_run(
     endpoint_url: str,
     instance: SWEbenchInstance,
     run_id: str,
+    anthropic_api_key: str,
 ):
     with tempfile.TemporaryDirectory() as tmpdirname:
         tmp_path = tmpdirname
@@ -31,7 +32,7 @@ async def sidecar_run(
             "--timeout", "1800",
             "--editor-url", endpoint_url,
             "--run-id", run_id,
-            "--anthropic-api-key", "",
+            "--anthropic-api-key", anthropic_api_key,
         ])
         print("sidecar_binary_args", command_args)
 

@@ -693,6 +693,7 @@ async def main_sidecar(
     split: str,
     run_id: str,
     timeout: int,
+    anthropic_api_key: str,
     **kwargs,
 ):
     """
@@ -746,6 +747,7 @@ async def main_sidecar(
             endpoint_url=endpoint_url,
             instance=dataset_part,
             run_id=run_id,
+            anthropic_api_key=anthropic_api_key,
         )
 
         # Create the predictions by looking at the git-diff output
@@ -887,6 +889,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--run_id", type=str, default=str(int(time.time())), help="Run ID - identifies the run")
     parser.add_argument("--sidecar_executable_path", type=str, help="Path to the sidecar binary")
+    parser.add_argument("--anthropic_api_key", type=str, help="Set the anthropic api key which we should be using")
     args = parser.parse_args()
 
     loop = asyncio.new_event_loop()
