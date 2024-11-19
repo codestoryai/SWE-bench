@@ -4,7 +4,7 @@ import asyncio
 from typing import Tuple
 from swebench.editor.webserver import setup_webserver
 
-async def setup_editor(git_dname, test_cmd) -> Tuple[str, asyncio.Task]:
+async def setup_editor(git_dname, test_cmd, terminal_command_runner) -> Tuple[str, asyncio.Task]:
     """
     Set up the Language Server Protocol for the code in `git_dname`.
     """
@@ -15,5 +15,5 @@ async def setup_editor(git_dname, test_cmd) -> Tuple[str, asyncio.Task]:
     port = 6897
     print("http_implementation::setup_editor")
     # We want to cancel the task here at teardown, how do we do that?
-    task = asyncio.create_task(setup_webserver(git_dname, port, test_cmd))
+    task = asyncio.create_task(setup_webserver(git_dname, port, test_cmd, terminal_command_runner))
     return f"http://localhost:{port}", task
