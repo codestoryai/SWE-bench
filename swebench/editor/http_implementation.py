@@ -13,6 +13,7 @@ def setup_editor(git_dname, test_cmd) -> Tuple[str, asyncio.Task]:
     # and then talk to it from the sidecar
     # using JEDI
     port = 6897
+    print("http_implementation::setup_editor")
     # We want to cancel the task here at teardown, how do we do that?
     task = asyncio.get_event_loop().create_task(setup_webserver(git_dname, port, test_cmd))
     return f"http://localhost:{port}", task
