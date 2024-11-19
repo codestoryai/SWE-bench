@@ -389,6 +389,7 @@ async def setup_webserver(dir_name: str, port: int, test_cmd) -> str:
     app.router.add_post('/select_quick_fix', get_quick_fix_handler)
     app.router.add_post('/run_tests', create_test_endpoint(test_cmd))
     app.router.add_post('/file_open', create_file_open_handler(dir_name=dir_name))
+    # endpoint for terminal execution
     app.router.add_get("/", lambda _: web.Response(text="Hello, world"))
     runner = web.AppRunner(app)
     print("Setting up the bare-bones editor here")

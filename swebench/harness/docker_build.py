@@ -434,6 +434,8 @@ def build_instance_image(
     # Get the image names and dockerfile for the instance image
     image_name = test_spec.instance_image_key
     env_image_name = test_spec.env_image_key
+    print("env_image_name", env_image_name)
+    print("image_name", image_name)
     dockerfile = test_spec.instance_dockerfile
 
     # Check that the env. image the instance image is based on exists
@@ -445,6 +447,7 @@ def build_instance_image(
             f"Environment image {env_image_name} not found for {test_spec.instance_id}",
             logger,
         ) from e
+    print("environment image found for something")
     logger.info(
         f"Environment image {env_image_name} found for {test_spec.instance_id}\n"
         f"Building instance image {image_name} for {test_spec.instance_id}"
@@ -456,14 +459,17 @@ def build_instance_image(
         instance_image = client.images.get(image_name)
         if instance_image.attrs["Created"] < env_image.attrs["Created"]:
             # the environment image is newer than the instance image, meaning the instance image may be outdated
+            print("are we over here???")
             remove_image(client, image_name, "quiet")
             image_exists = False
         else:
             image_exists = True
     except docker.errors.ImageNotFound:
+        print("we got an exception")
         pass
 
     # Build the instance image
+    print("image_exists", image_exists)
     if not image_exists:
         build_image(
             image_name=image_name,

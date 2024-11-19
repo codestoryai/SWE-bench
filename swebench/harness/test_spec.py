@@ -71,6 +71,7 @@ class TestSpec:
 
         Note that old images are not automatically deleted, so consider cleaning up old images periodically.
         """
+        return "swebench/sweb.eval.x86_64.django_1776_django-13033:v1"
         hash_object = hashlib.sha256()
         hash_object.update(str(self.env_script_list).encode("utf-8"))
         hash_value = hash_object.hexdigest()
@@ -79,7 +80,8 @@ class TestSpec:
 
     @property
     def instance_image_key(self):
-        return f"sweb.eval.{self.arch}.{self.instance_id}:latest"
+        return "swebench/sweb.eval.x86_64.django_1776_django-13033:v1"
+        return f"swebench/sweb.eval.{self.arch}.{self.instance_id}:v1"
 
     def get_instance_container_name(self, run_id=None):
         if not run_id:
@@ -100,12 +102,7 @@ class TestSpec:
 
     @property
     def platform(self):
-        if self.arch == "x86_64":
-            return "linux/x86_64"
-        elif self.arch == "arm64":
-            return "linux/arm64/v8"
-        else:
-            raise ValueError(f"Invalid architecture: {self.arch}")
+        return "linux/x86_64"
 
 
 def get_test_specs_from_dataset(dataset: Union[list[SWEbenchInstance], list[TestSpec]]) -> list[TestSpec]:
@@ -316,6 +313,8 @@ def make_test_spec(instance: SWEbenchInstance) -> TestSpec:
     else:
         arch = "x86_64"
 
+    # override the arch for internal testing
+    arch = "x86_64"
     return TestSpec(
         instance_id=instance_id,
         repo=repo,
