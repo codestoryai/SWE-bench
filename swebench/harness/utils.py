@@ -311,6 +311,7 @@ def get_test_directives_for_files(instance: SWEbenchInstance, local_fs_file_path
             d = d.replace("/", ".")
             directives_transformed.append(d)
         directives = directives_transformed
+    return directives
 
 
 def get_test_directives(instance: SWEbenchInstance) -> list:

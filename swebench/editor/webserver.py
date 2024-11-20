@@ -419,7 +419,7 @@ def create_test_endpoint(test_cmd):
         # print(data)
         # test_cmd is an async method, idk how to pass it as that type tho :(
         # We should grab the exit code over here as well
-        _, output, test_output_path = await test_cmd(files_to_test)
+        _, output, test_output_path = test_cmd(files_to_test)
         with open(test_output_path, 'r') as file:
             test_output = file.read()
         output['test_output_file'] = test_output
