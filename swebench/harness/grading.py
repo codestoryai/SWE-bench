@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
@@ -13,6 +13,7 @@ from swebench.harness.constants import (
     TESTS_ERROR,
     TESTS_TIMEOUT,
     ResolvedStatus,
+    SWEbenchInstance,
     TestStatus,
 )
 from swebench.harness.test_spec import TestSpec
@@ -31,7 +32,7 @@ def test_failed(case: str, sm: dict[str, str]) -> bool:
 
 
 # MARK: Evaluation report functions
-def get_logs_eval(log_fp: str) -> tuple[dict[str, str], bool]:
+def get_logs_eval(log_fp: str, instance: Optional[SWEbenchInstance]) -> tuple[dict[str, str], bool]:
     """
     Retrieve evaluation results for a task instance from its corresponding log file
 
@@ -46,6 +47,10 @@ def get_logs_eval(log_fp: str) -> tuple[dict[str, str], bool]:
     # Convert e.g. "logs/scikit-learn__scikit-learn-12421/test_output.txt" to "scikit-learn/scikit-learn"
     sample_id = str(Path(log_fp).parent.stem)  # e.g. scikit-learn__scikit-learn-12421
     repo = "-".join(sample_id.replace("__", "/").split("-")[:-1])  # e.g. scikit-learn/scikit-learn
+    # always choose the repo name as instance['repo'] if available
+    if instance is not None:
+        repo = instance['repo']
+
     log_parser = MAP_REPO_TO_PARSER[repo]
 
     with open(log_fp) as f:
@@ -211,6 +216,7 @@ def get_eval_report(
     prediction: dict[str, str],
     log_path: str,
     include_tests_status: bool,
+    instance: Optional[SWEbenchInstance],
 ) -> dict[str, Any]:
     """
     Generate a report of model evaluation results from a prediction, task instance,
@@ -242,7 +248,7 @@ def get_eval_report(
     report_map[instance_id]["patch_exists"] = True
 
     # Get evaluation logs
-    eval_sm, found = get_logs_eval(log_path)
+    eval_sm, found = get_logs_eval(log_path, instance=instance)
 
     if not found:
         return report_map

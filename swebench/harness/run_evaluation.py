@@ -26,6 +26,7 @@ from swebench.harness.constants import (
     KEY_INSTANCE_ID,
     KEY_MODEL,
     KEY_PREDICTION,
+    MAP_REPO_VERSION_TO_SPECS,
     RUN_EVALUATION_LOG_DIR,
     SWEbenchInstance,
 )
@@ -96,7 +97,7 @@ def run_instance_for_test_path(
     instance_id = test_spec.instance_id
     # This is the full path
     model_name_or_path = model_name_or_path.replace("/", "__")
-    log_dir = RUN_EVALUATION_LOG_DIR / run_id / model_name_or_path / instance_id / "test_output"
+    log_dir = RUN_EVALUATION_LOG_DIR / run_id / model_name_or_path / instance_id / "test_output" / str(int(time.time()))
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # Link the image build dir in the log dir
@@ -187,6 +188,7 @@ def run_instance_for_test_path(
             files=test_files,
             git_drname=git_drname,
             instance=instance,
+            specs=MAP_REPO_VERSION_TO_SPECS[instance['repo']][instance['version']],
         )
         eval_script = "\n".join(["#!/bin/bash", "set -uxo pipefail"] + eval_script_list) + "\n"
         eval_file.write_text(eval_script)
@@ -227,6 +229,7 @@ def run_instance_for_test_path(
             prediction=pred,
             log_path=test_output_path,
             include_tests_status=True,
+            instance=instance,
         )
         logger.info(
             f"report: {report}\n"
@@ -339,6 +342,7 @@ def run_instance(
         force_rebuild: bool,
         client: docker.DockerClient,
         run_id: str,
+        instance: SWEbenchInstance | None,
         timeout: int | None = None,
     ):
     """
@@ -465,6 +469,7 @@ def run_instance(
             prediction=pred,
             log_path=test_output_path,
             include_tests_status=True,
+            instance=instance,
         )
         logger.info(
             f"report: {report}\n"
@@ -853,6 +858,7 @@ async def main_sidecar(
             client=docker.from_env(),
             run_id=run_id,
             test_files=files,
+            instance=dataset_part,
             container=debug_container,
             timeout=timeout,
         )
