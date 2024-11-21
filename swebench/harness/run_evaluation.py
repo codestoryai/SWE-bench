@@ -1,7 +1,7 @@
 from __future__ import annotations
 import asyncio
 import subprocess
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import docker
 import json
@@ -31,6 +31,7 @@ from swebench.harness.constants import (
     SWEbenchInstance,
 )
 from swebench.harness.docker_utils import (
+    exec_run_with_timeout_and_error_code,
     remove_image,
     copy_to_container,
     exec_run_with_timeout,
@@ -92,7 +93,7 @@ def run_instance_for_test_path(
     test_files: List[str],
     container: docker.models.containers.Container,
     timeout: int | None = None,
-) -> Tuple[str, Dict[str, Any], Path]:
+) -> Tuple[str, Dict[str, Any], Path, int]:
     # Set up logging directory
     instance_id = test_spec.instance_id
     # This is the full path
@@ -198,9 +199,10 @@ def run_instance_for_test_path(
         copy_to_container(container, eval_file, Path("/eval.sh"))
 
         # Run eval script, write output to logs
-        test_output, timed_out, total_runtime = exec_run_with_timeout(container, "/bin/bash /eval.sh", timeout)
+        test_output, timed_out, total_runtime, exit_code = exec_run_with_timeout_and_error_code(container, "/bin/bash /eval.sh", timeout)
         test_output_path = log_dir / "test_output.txt"
         logger.info(f'Test runtime: {total_runtime:_.2f} seconds')
+        logger.info(f'Test run exit code: {exit_code}')
         with open(test_output_path, "w") as f:
             f.write(test_output)
             logger.info(f"Test output for {instance_id} written to {test_output_path}")
@@ -239,7 +241,7 @@ def run_instance_for_test_path(
         # Write report to report.json
         with open(report_path, "w") as f:
             f.write(json.dumps(report, indent=4))
-        return instance_id, report, test_output_path
+        return instance_id, report, test_output_path, exit_code
     except EvaluationError as e:
         error_msg = traceback.format_exc()
         logger.info(error_msg)
@@ -342,7 +344,7 @@ def run_instance(
         force_rebuild: bool,
         client: docker.DockerClient,
         run_id: str,
-        instance: SWEbenchInstance | None,
+        instance: Optional[SWEbenchInstance],
         timeout: int | None = None,
     ):
     """
@@ -556,6 +558,8 @@ def run_instances(
                     force_rebuild,
                     client,
                     run_id,
+                    # Pass instance id as None over here
+                    None,
                     timeout,
                 ): None
                 for test_spec in test_specs

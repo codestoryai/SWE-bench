@@ -1,6 +1,7 @@
 # We are going to be testing the jedi library over here
 
 import asyncio
+import difflib
 import json
 from pathlib import Path
 import subprocess
@@ -261,6 +262,27 @@ def create_terminal_handler(terminal_command_runner):
         })
     return terminal_handler
 
+def create_git_diff_handler(dir_name: str):
+    async def git_diff_handler(request):
+        data = await request.json()
+        original_content = data['original_content']
+        modified_content = data['modified_content']
+        fs_file_path = data['fs_file_path']
+        fs_file_path = fs_file_path.removeprefix(dir_name + '/')
+        original_lines = original_content.splitlines()
+        modified_lines = modified_content.splitlines()
+        diff = difflib.unified_diff(
+            original_lines,
+            modified_lines,
+            fromfile=fs_file_path,
+            tofile=fs_file_path,
+            lineterm=''
+        )
+        return web.json_response({
+            'generated_diff': '\n'.join(diff)
+        })
+    return git_diff_handler
+
 def create_file_open_handler(dir_name: str):
     async def file_open_handler(request):
         # print("file-open-handler")
@@ -419,11 +441,12 @@ def create_test_endpoint(test_cmd):
         # print(data)
         # test_cmd is an async method, idk how to pass it as that type tho :(
         # We should grab the exit code over here as well
-        _, output, test_output_path = test_cmd(files_to_test)
+        _, output, test_output_path, exit_code = test_cmd(files_to_test)
         with open(test_output_path, 'r') as file:
             test_output = file.read()
         output['test_output_file'] = test_output
-        return web.json_response({'test_output': test_output})
+        output['exit_code'] = exit_code
+        return web.json_response({'test_output': test_output, 'exit_code': exit_code})
     return get_test_endpoint
 
 # TODO(skcd): Expose an endpoint for running the test cmd
@@ -448,6 +471,7 @@ async def setup_webserver(dir_name: str, port: int, test_cmd, terminal_command_r
     app.router.add_post('/terminal_output_new', create_terminal_output_new_handler)
     app.router.add_post('/new_exchange', create_new_exchange_handler)
     app.router.add_post('/recent_edits', create_recent_edits_handler)
+    app.router.add_post('/diff_generator', create_git_diff_handler(dir_name=dir_name))
     # endpoint for terminal execution
     app.router.add_get("/", lambda _: web.Response(text="Hello, world"))
     runner = web.AppRunner(app)
