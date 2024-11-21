@@ -143,6 +143,8 @@ def run_instance_for_test_path(
         logger.info(
             f"Intermediate patch for {instance_id} written to {patch_file}, now applying to container..."
         )
+        # Stash all the recent changes so we apply a clean patch
+        container.exec_run("git stash")
         copy_to_container(container, patch_file, Path("/tmp/patch.diff"))
 
         # Attempt to apply patch to container
