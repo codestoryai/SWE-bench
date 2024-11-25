@@ -806,6 +806,7 @@ async def main_sidecar(
     run_id: str,
     timeout: int,
     anthropic_api_key: str,
+    test_mode: bool,
     **kwargs,
 ):
     """
@@ -875,6 +876,9 @@ async def main_sidecar(
         )
         # sleep here is necessary so we are able to hit the endpoints
         await asyncio.sleep(2)
+        if test_mode:
+            print("Generating tests and not EDITS")
+
         print("run_evaluation::endpoint_url", endpoint_url)
         await sidecar_run(
             sidecar_path=sidecar_executable_path,
@@ -1030,6 +1034,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--run_id", type=str, default=str(int(time.time())), help="Run ID - identifies the run")
     parser.add_argument("--sidecar_executable_path", type=str, help="Path to the sidecar binary")
+    parser.add_argument("--test_mode", type=bool, default=False, help="If we should run the test agent or the swebench agent, setting to true runs the test generation agent")
     parser.add_argument("--anthropic_api_key", type=str, help="Set the anthropic api key which we should be using")
     args = parser.parse_args()
 
