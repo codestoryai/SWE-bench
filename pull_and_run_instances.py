@@ -26,7 +26,7 @@ async def run_command_for_string(str_input):
             f"--dataset_name dataset/verified/output.jsonl "
             f"--instance_ids {str_input} "
             f"--sidecar_executable_path /Users/zi/codestory/sidecar/target/debug/swe_bench "
-            f"--anthropic_api_key BOO" # key needed
+            f"--anthropic_api_key " # key needed
         )
         
         print(f"Running evaluation for: {str_input}")
@@ -89,42 +89,13 @@ async def process_strings(strings):
 
 # Example usage
 if __name__ == "__main__":
-    # strings_to_process = [
-    #     "django__django-10880",
-    #     "django__django-11211",
-    #     "django__django-12193",
-    #     "django__django-12713",
-    #     "django__django-12741",
-    #     "django__django-13028",
-    #     "django__django-13279",
-    #     "django__django-14017",
-    #     "django__django-14238",
-    #     "django__django-14434",
-    #     "django__django-14539",
-    #     "django__django-14608",
-    #     "django__django-14672",
-    #     "django__django-15022",
-    #     "django__django-15103",
-    #     "django__django-15128",
-    #     "django__django-15278",
-    #     "django__django-15380",
-    #     "django__django-15561",
-    #     "django__django-15741",
-    #     "django__django-15814",
-    #     "django__django-15863",
-    #     "django__django-16100",
-    #     "django__django-16116",
-    #     "django__django-16136",
-    #     "django__django-16485",
-    #     "django__django-16899",
-    #     "django__django-16901",
-    #     "django__django-17087",
-    #     "django__django-7530",
-    # ]
 
-    strings_to_process = [
-        "django__django-15741",
-        "django__django-15814",
+    instance_ids = [
+        "django__django-11276",
+        "django__django-11749",
+        "django__django-11815",
+        "django__django-12304",
+        "django__django-12708",
     ]
     
-    asyncio.run(process_strings(strings_to_process)) 
+    asyncio.run(process_strings(instance_ids)) 
