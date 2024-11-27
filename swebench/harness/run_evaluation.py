@@ -335,7 +335,7 @@ def run_terminal_command(
     # Now we have applied the patch, we can run the command we are interested in
     # on the docker container
     # /testbed is the directory where the repo is checked out
-    command_output = container.exec_run(f"/bin/bash {command}", workdir="/testbed").output.decode("utf-8").strip()
+    command_output = container.exec_run(f"{command}", workdir="/testbed").output.decode("utf-8").strip()
     return command_output
 
 
