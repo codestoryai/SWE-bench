@@ -917,7 +917,7 @@ async def main_sidecar(
             parsed_mcts_tree = json.load(f)
         
         # Now that we have the tree we need to be smar on top of it
-        completed_nodes = [int(index) for index, node in parsed_mcts_tree["index_to_node"]
+        completed_nodes = [int(index) for index, node in parsed_mcts_tree["index_to_node"].items()
                            if node.get("action") and "AttemptCompletion" in str(node["action"])]
         
         # Now iterate over the completed nodes
