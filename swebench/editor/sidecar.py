@@ -49,7 +49,10 @@ async def sidecar_run(
 
         async def read_stream(stream, name):
             async for line in stream:
-                print(f"{name}: {line.decode().strip()}")
+                decoded_line: str = line.decode()
+                if decoded_line == '\n':
+                    continue
+                print(f"{name}: {decoded_line.rstrip()}")
 
         # Concurrently read stdout and stderr
         await asyncio.gather(
