@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+import os
 import subprocess
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -896,22 +897,7 @@ async def main_sidecar(
         print("Removing debug container", debug_container.id)
         debug_container.remove()
 
-        # Create the predictions by looking at the git-diff output
-        # this needs to be in the special format mentioned over here
-        try:
-            git_diff_output = subprocess.check_output(
-                ["git", "diff"],
-                cwd=git_tempdir,
-            ).decode("utf-8")
-            predictions.append({
-                KEY_INSTANCE_ID: dataset_part['instance_id'],
-                KEY_MODEL: "sidecar",
-                KEY_PREDICTION: git_diff_output,
-            })
-        except subprocess.CalledProcessError as e:
-            print(f"Failed to create git diff: {e}")
-
-
+        # Cancel the editor task
         try:
             # Wait for the task to complete with a timeout
             editor_task.cancel()
@@ -923,30 +909,96 @@ async def main_sidecar(
             except asyncio.CancelledError:
                 print("Task was successfully cancelled.")
 
-        continue
+        # Here we want to run the evaluation on top of the mcts tree that was generated
+        mcts_tree = os.path.join(log_directory, f"mcts-{run_id}.json")
+        # Now we are going to parse it and one by one run the evaluation for each of the
+        # finished nodes
+        with open(mcts_tree, 'r') as f:
+            parsed_mcts_tree = json.load(f)
+        
+        # Now that we have the tree we need to be smar on top of it
+        completed_nodes = [int(index) for index, node in parsed_mcts_tree["index_to_node"]
+                           if node.get("action") and "AttemptCompletion" in str(node["action"])]
+        
+        # Now iterate over the completed nodes
+        for completed_node in completed_nodes:
+            print(f"Evaluating {completed_node}")
+            node = parsed_mcts_tree["index_to_node"][str(completed_node)]
+            variables = node["user_context"]["variables"]
+            # First clear out any changes which exist on the git_tempdir
+            print(f"reset git_directory at {git_tempdir}")
+            subprocess.check_output(["git", "add", "."], cwd=git_tempdir)
+            subprocess.check_output(["git", "stash"], cwd=git_tempdir)
+            # Now apply the patch one by one to the files we are interested in
+            for variable in variables:
+                initial_patch = variable.get("initial_patch")
+                file_path = variable.get("fs_file_path")
+                
+                if initial_patch and file_path:
+                    try:
+                        print(f"applying patch for {file_path}")
+                        # Write the patch to a temporary file
+                        temp_patch_file = "temp_patch.diff"
+                        with open(temp_patch_file, "w") as patch_file:
+                            patch_file.write(initial_patch)
+                        
+                        # Apply the patch to the file
+                        subprocess.check_output(["patch", file_path, temp_patch_file])
+                        print(f"Patch applied successfully to {file_path}")
+                    except subprocess.CalledProcessError as e:
+                        print(f"Failed to apply patch to {file_path}: {e.output.decode()}")
+                    finally:
+                        # Clean up the temporary patch file
+                        if os.path.exists(temp_patch_file):
+                            os.remove(temp_patch_file)
+            
+            # Patch applied
+            print(f"Finished updating repo for node: {completed_node}")
 
-    print("run_evaluation::predictions", len(predictions))
-    predictions = {pred[KEY_INSTANCE_ID]: pred for pred in predictions}
+            # run evaluation now
+            # Create the predictions by looking at the git-diff output
+            # this needs to be in the special format mentioned over here
 
-    client = docker.from_env()
-    # Load the datasets from the predicitions
-    dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions, run_id)
-    full_dataset = load_swebench_dataset(dataset_name, split, instance_ids)
-    existing_images = list_images(client)
-    print(f"Running {len(dataset)} unevaluated instances...")
-    if not dataset:
-        print("No instances to run.")
-    else:
-        # build environment images + run instances
-        # build_env_images(client, dataset, False, max_workers)
-        # Sets timeout to 1800 seconds or 30 minutes
-        # This is where it gets interesting since we want to poll for some time
-        # before getting the predictions over here
-        # This is the most important bit
-        run_instances(predictions, dataset, "none", False, False, max_workers, run_id, 1_800)
+            # Empty the predictions
+            predictions = []
+            try:
+                git_diff_output = subprocess.check_output(
+                    ["git", "diff"],
+                    cwd=git_tempdir,
+                ).decode("utf-8")
+                predictions.append({
+                    KEY_INSTANCE_ID: dataset_part['instance_id'],
+                    KEY_MODEL: "sidecar",
+                    KEY_PREDICTION: git_diff_output,
+                })
+            except subprocess.CalledProcessError as e:
+                print(f"Failed to create git diff: {e}")
 
-    clean_images(client, existing_images, "none", False)
-    make_run_report(predictions, full_dataset, client, run_id)
+
+            print(f"Running evaluation for {completed_node}")
+
+            print("run_evaluation::predictions", len(predictions))
+            predictions = {pred[KEY_INSTANCE_ID]: pred for pred in predictions}
+
+            client = docker.from_env()
+            # Load the datasets from the predicitions
+            dataset = get_dataset_from_preds(dataset_name, split, instance_ids, predictions, run_id)
+            full_dataset = load_swebench_dataset(dataset_name, split, instance_ids)
+            existing_images = list_images(client)
+            print(f"Running {len(dataset)} unevaluated instances...")
+            if not dataset:
+                print("No instances to run.")
+            else:
+                # build environment images + run instances
+                # build_env_images(client, dataset, False, max_workers)
+                # Sets timeout to 1800 seconds or 30 minutes
+                # This is where it gets interesting since we want to poll for some time
+                # before getting the predictions over here
+                # This is the most important bit
+                run_instances(predictions, dataset, "none", False, False, max_workers, run_id, 1_800)
+
+            clean_images(client, existing_images, "none", False)
+            make_run_report(predictions, full_dataset, client, run_id)
 
 
 def main(
