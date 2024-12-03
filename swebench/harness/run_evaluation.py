@@ -887,6 +887,7 @@ async def main_sidecar(
             instance=dataset_part,
             run_id=run_id,
             anthropic_api_key=anthropic_api_key,
+            log_directory=log_directory,
         )
 
         # Stop our debug container over here
