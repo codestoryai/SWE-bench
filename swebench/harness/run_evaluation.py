@@ -150,6 +150,8 @@ def run_instance_for_test_path(
             f"Intermediate patch for {instance_id} written to {patch_file}, now applying to container..."
         )
         # Stash all the recent changes so we apply a clean patch
+        container.exec_run("git clean -fdX", workdir="/testbed", user="root")
+        container.exec_run("git clean -fdx", workdir="/testbed", user="root")
         container.exec_run("git add . && git stash", workdir="/testbed", user="root")
         copy_to_container(container, patch_file, Path("/tmp/patch.diff"))
 
@@ -304,7 +306,13 @@ def run_terminal_command(
     instead of spinning up a new one all the time
     """
     # First we stash all the pending changes which we might have done
+    container.exec_run("git clean -fdX", workdir="/testbed", user="root")
+    container.exec_run("git clean -fdx", workdir="/testbed", user="root")
     container.exec_run("git add . && git stash", workdir="/testbed", user="root")
+    container_git_diff = container.exec_run("git status", workdir="/testbed", user="root")
+    print('git status container', container_git_diff.output.decode('utf-8'))
+    container_git_diff = container.exec_run("git stash show -p", workdir="/testbed", user="root")
+    print('git stash show -p inside container', container_git_diff.output.decode('utf-8'))
     # Now we get the patch file we are interested in
     # - First add all the files which are there to the git tracking so we can track them
     _ = subprocess.check_output(["git", "add", "."], cwd=git_drname).decode("utf-8")
