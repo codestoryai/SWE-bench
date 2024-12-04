@@ -2,7 +2,7 @@
 FROM docker:latest AS docker_base
 
 # Stage 2: Python environment with venv
-FROM python:3.9-slim AS python_base
+FROM python:3.11.6-slim AS python_base
 
 # Install required system dependencies
 RUN apt-get update && apt-get install -y \
@@ -12,39 +12,44 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy application files
-COPY . .
+# Copy and install requirements first
+COPY requirements.txt .
+RUN python3 -m venv venv && \
+    . venv/bin/activate && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Create and activate virtual environment
-RUN python -m venv venv
+# Set venv in PATH for subsequent commands
 ENV PATH="/app/venv/bin:$PATH"
 
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy application files after installing dependencies
+COPY . .
 
-# Stage 3: Rust binary
-FROM rust:latest AS rust_base
+# Keep container running for development/debugging
+CMD ["tail", "-f", "/dev/null"]
 
-# Set working directory
-WORKDIR /app
 
-# Copy Rust source code and build
-COPY path/to/rust/source .
-RUN cargo build --release
+# # Stage 3: Rust binary
+# FROM rust:latest AS rust_base
 
-# Final Stage: Combine all components
-FROM docker_base
+# # Set working directory
+# WORKDIR /app
 
-# Copy Python environment
-COPY --from=python_base /app /app
+# # Copy Rust source code and build
+# COPY path/to/rust/source .
+# RUN cargo build --release
 
-# Copy Rust binary
-COPY --from=rust_base /app/target/release/your_rust_binary /usr/local/bin/
+# # Final Stage: Combine all components
+# FROM docker_base
 
-# Set working directory
-WORKDIR /app
+# # Copy Python environment
+# COPY --from=python_base /app /app
 
-# Set entrypoint
-ENTRYPOINT ["./venv/bin/python", "your_entrypoint_script.py"]
+# # Copy Rust binary
+# COPY --from=rust_base /app/target/release/your_rust_binary /usr/local/bin/
+
+# # Set working directory
+# WORKDIR /app
+
+# # Set entrypoint
+# ENTRYPOINT ["./venv/bin/python", "your_entrypoint_script.py"]
 
