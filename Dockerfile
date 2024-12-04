@@ -1,5 +1,5 @@
 # Stage 1: Docker CLI/Engine
-FROM docker:latest AS docker_base
+FROM docker:dind AS docker_base
 
 # Stage 2: Python environment with venv
 FROM python:3.11.6-slim AS python_base
@@ -24,10 +24,6 @@ ENV PATH="/app/venv/bin:$PATH"
 # Copy /swebench files after installing dependencies
 COPY ./swebench ./swebench
 
-# Keep container running for development/debugging
-CMD ["tail", "-f", "/dev/null"]
-
-
 # # Stage 3: Rust binary
 # FROM rust:latest AS rust_base
 
@@ -38,18 +34,27 @@ CMD ["tail", "-f", "/dev/null"]
 # COPY path/to/rust/source .
 # RUN cargo build --release
 
-# # Final Stage: Combine all components
-# FROM docker_base
+# Final Stage: Combine all components
+FROM docker_base
 
-# # Copy Python environment
-# COPY --from=python_base /app /app
+# Copy Python environment
+COPY --from=python_base /app /app
 
 # # Copy Rust binary
 # COPY --from=rust_base /app/target/release/your_rust_binary /usr/local/bin/
 
-# # Set working directory
-# WORKDIR /app
+# Set working directory
+WORKDIR /app
+
+# Enable Docker daemon
+ENV DOCKER_TLS_CERTDIR=""
+ENV DOCKER_HOST="unix:///var/run/docker.sock"
+
+# Start dockerd and your application
+ENTRYPOINT ["dockerd-entrypoint.sh"]
 
 # # Set entrypoint
 # ENTRYPOINT ["./venv/bin/python", "your_entrypoint_script.py"]
 
+# # Keep container running for development/debugging
+# CMD ["tail", "-f", "/dev/null"]
