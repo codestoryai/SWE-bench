@@ -34,11 +34,14 @@ COPY ./swebench ./swebench
 # Final Stage: Combine all components
 FROM docker_base
 
+# Bring python into the final image
+COPY --from=python_base /usr/local /usr/local
+
 # Copy Python environment
 COPY --from=python_base /app /app
 
-# Set venv in PATH for subsequent commands
-ENV PATH="/app/venv/bin:$PATH"
+ENV VIRTUAL_ENV=/app/venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # # Copy Rust binary
 # COPY --from=rust_base /app/target/release/your_rust_binary /usr/local/bin/

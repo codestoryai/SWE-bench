@@ -14,3 +14,8 @@ docker push europe-west2-docker.pkg.dev/anton-390822/swe-bench/swe-test:latest
 ```
 gcloud artifacts docker images list europe-west2-docker.pkg.dev/anton-390822/swe-bench
 ```
+
+4. Must run image in privileged mode
+```
+docker run --privileged -it europe-west2-docker.pkg.dev/anton-390822/swe-bench/swe-test:latest
+```
