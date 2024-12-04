@@ -15,16 +15,16 @@ docker push europe-west2-docker.pkg.dev/anton-390822/swe-bench/swe-test:latest
 gcloud artifacts docker images list europe-west2-docker.pkg.dev/anton-390822/swe-bench
 ```
 
-4. Must run image in privileged mode
+4. Configure VM to use the new image
+Do so in the Google Cloud Compute Engine VM Instance. Section: Container
+
+5. SSH into the VM
+
+6. Get image ID
 ```
-docker run --privileged -it europe-west2-docker.pkg.dev/anton-390822/swe-bench/swe-test:latest
+docker images
 ```
-
-
-
-
-So, seems like Google Compute Engine has a Docker base, which we may be able to use docker pull from?
-
-
-# So this shit works. As in, GCP compute engine has a docker base, which we may be able to use docker pull from?
-docker run -d -v /var/run/docker.sock:/var/run/docker.sock <image_name>
+7. Run the image manually with the following command:
+```
+docker run -d -v /var/run/docker.sock:/var/run/docker.sock <image_id>
+```
