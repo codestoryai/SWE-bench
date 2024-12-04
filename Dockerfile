@@ -1,8 +1,8 @@
 # Stage 1: Docker CLI/Engine
-FROM docker:dind AS docker_base
+FROM --platform=linux/amd64 docker:dind AS docker_base
 
 # Stage 2: Python environment with venv
-FROM python:3.11.6-slim AS python_base
+FROM --platform=linux/amd64 python:3.11.6-slim AS python_base
 
 # Install required system dependencies
 RUN apt-get update && apt-get install -y \
@@ -17,9 +17,6 @@ COPY requirements.txt .
 RUN python3 -m venv venv && \
     . venv/bin/activate && \
     pip install --no-cache-dir -r requirements.txt
-
-# Set venv in PATH for subsequent commands
-ENV PATH="/app/venv/bin:$PATH"
 
 # Copy /swebench files after installing dependencies
 COPY ./swebench ./swebench
@@ -40,15 +37,14 @@ FROM docker_base
 # Copy Python environment
 COPY --from=python_base /app /app
 
+# Set venv in PATH for subsequent commands
+ENV PATH="/app/venv/bin:$PATH"
+
 # # Copy Rust binary
 # COPY --from=rust_base /app/target/release/your_rust_binary /usr/local/bin/
 
 # Set working directory
 WORKDIR /app
-
-# Enable Docker daemon
-ENV DOCKER_TLS_CERTDIR=""
-ENV DOCKER_HOST="unix:///var/run/docker.sock"
 
 # Start dockerd and your application
 ENTRYPOINT ["dockerd-entrypoint.sh"]
