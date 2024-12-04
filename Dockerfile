@@ -21,8 +21,8 @@ RUN python3 -m venv venv && \
 # Set venv in PATH for subsequent commands
 ENV PATH="/app/venv/bin:$PATH"
 
-# Copy application files after installing dependencies
-COPY . .
+# Copy /swebench files after installing dependencies
+COPY ./swebench ./swebench
 
 # Keep container running for development/debugging
 CMD ["tail", "-f", "/dev/null"]
