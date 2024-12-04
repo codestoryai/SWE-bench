@@ -175,6 +175,57 @@ def cleanup_container(client, container, logger):
             f"{traceback.format_exc()}"
         )
 
+def exec_run_with_timeout_and_error_code_only_stdout(container: docker.models.containers.Container, cmd, timeout: int|None=60):
+    """
+    Run a command in the container and capture the stdout of it.
+
+    Args:
+        container (docker.Container): Container to run the command in.
+        cmd (str): Command to run.
+        timeout (int): Timeout in seconds.
+    """
+    # Local variables to store the result of executing the command
+    exec_result_stdout = b''
+    exec_result_stderr = b''
+    exec_id = None
+    exception = None
+    timed_out = False
+    exec_code = 1
+
+    # Wrapper function to run the command
+    def run_command():
+        nonlocal exec_result_stdout, exec_result_stderr, exec_id, exception, exec_code
+        try:
+            exec_id = container.client.api.exec_create(container.id, cmd)["Id"]
+            exec_stream = container.client.api.exec_start(exec_id, stream=True, demux=True)
+            for stdout_chunk, stderr_chunk in exec_stream:
+                if stdout_chunk:
+                    exec_result_stdout += stdout_chunk
+                if stderr_chunk:
+                    exec_result_stderr += stderr_chunk
+        except Exception as e:
+            exception = e
+
+    # Start the command in a separate thread
+    thread = threading.Thread(target=run_command)
+    start_time = time.time()
+    thread.start()
+    thread.join(timeout)
+
+    if exception:
+        raise exception
+
+    print('docker test run exit code', container.client.api.exec_inspect(exec_id))
+    exec_code = container.client.api.exec_inspect(exec_id)['ExitCode']
+    # If the thread is still alive, the command timed out
+    if thread.is_alive():
+        if exec_id is not None:
+            exec_pid = container.client.api.exec_inspect(exec_id)["Pid"]
+            container.exec_run(f"kill -TERM {exec_pid}", detach=True)
+        timed_out = True
+    end_time = time.time()
+    final_output = f"{exec_result_stdout.decode()}"
+    return final_output, timed_out, end_time - start_time, exec_code
 
 def exec_run_with_timeout_and_error_code(container: docker.models.containers.Container, cmd, timeout: int|None=60):
     """
