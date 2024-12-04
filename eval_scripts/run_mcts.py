@@ -25,7 +25,7 @@ async def run_command_for_string(str_input):
             f"python3 swebench/harness/run_evaluation.py "
             f"--dataset_name dataset/verified/output.jsonl "
             f"--instance_ids {str_input} "
-            f"--sidecar_executable_path /Users/zi/codestory/sidecar/target/debug/swe_bench_mcts "
+            f"--sidecar_executable_path /home/z/sidecar/target/debug/swe_bench_mcts "
             f"--anthropic_api_key " # key needed
         )
         
