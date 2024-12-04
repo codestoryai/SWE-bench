@@ -165,6 +165,37 @@ def replace_uninstallable_packages_requirements_txt(requirement_str: str) -> str
             requirements_replaced.append(requirement)
     return "\n".join(requirements_replaced) + "\n"
 
+def make_eval_script_for_terminal_command(instance: SWEbenchInstance, specs, env_name: str, repo_directory: str, terminal_command: str, git_drname: str):
+    """
+    Creates the eval script for running a test command this runs the test command
+    after setting up the environment for it everytime
+    In the future we can make this just for the repro script so the normal terminal
+    command through the fast flow
+    """
+    base_commit = instance['base_commit']
+    eval_commands = [
+        "source /opt/miniconda3/bin/activate",
+        f"conda activate {env_name}",
+        f"cd {repo_directory}",
+    ]
+    if "eval_commands" in specs:
+        eval_commands += specs["eval_commands"]
+    eval_commands += [
+        f"git config --global --add safe.directory {repo_directory}",  # for nonroot user
+        f"cd {repo_directory}",
+        # This is just informational, so we have a record
+        "git status",
+        "git show",
+        f"git diff {base_commit}",
+        "source /opt/miniconda3/bin/activate",
+        f"conda activate {env_name}",
+    ]
+    if "install" in specs:
+        eval_commands.append(specs["install"])
+    eval_commands += [
+        terminal_command,
+    ]
+    return eval_commands
 
 def make_env_script_list(instance: SWEbenchInstance, specs: dict, env_name: str) -> list[str]:
     """

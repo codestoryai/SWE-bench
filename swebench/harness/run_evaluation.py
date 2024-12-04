@@ -33,6 +33,7 @@ from swebench.harness.constants import (
 )
 from swebench.harness.docker_utils import (
     exec_run_with_timeout_and_error_code,
+    exec_run_with_timeout_and_error_code_only_stdout,
     remove_image,
     copy_to_container,
     exec_run_with_timeout,
@@ -53,7 +54,7 @@ from swebench.editor import (
     webserver,
 )
 from swebench.harness.grading import get_eval_report
-from swebench.harness.test_spec import make_eval_script_for_test_files, make_test_spec, TestSpec
+from swebench.harness.test_spec import make_eval_script_for_terminal_command, make_eval_script_for_test_files, make_test_spec, TestSpec
 from swebench.harness.utils import load_swebench_dataset, str2bool
 
 
@@ -150,7 +151,9 @@ def run_instance_for_test_path(
             f"Intermediate patch for {instance_id} written to {patch_file}, now applying to container..."
         )
         # Stash all the recent changes so we apply a clean patch
-        container.exec_run("git add . && git stash")
+        container.exec_run("git clean -fdX", workdir="/testbed", user="root")
+        container.exec_run("git clean -fdx", workdir="/testbed", user="root")
+        container.exec_run("git add . && git stash", workdir="/testbed", user="root")
         copy_to_container(container, patch_file, Path("/tmp/patch.diff"))
 
         # Attempt to apply patch to container
@@ -292,7 +295,11 @@ def start_debug_environment(
     return [container, log_dir]
 
 def run_terminal_command(
+    test_spec: TestSpec,
+    instance: SWEbenchInstance,
     command: str,
+    run_id: str,
+    model_name_or_path: str,
     git_drname: str,
     container: docker.models.containers.Container,
     log_directory: Path,
@@ -303,8 +310,40 @@ def run_terminal_command(
     This makes sure that we are able to reuse the same container over and over again
     instead of spinning up a new one all the time
     """
-    # First we stash all the pending changes which we might have done
-    container.exec_run("git add . && git stash")
+
+
+    # First create the logger for the output
+    # Set up logging directory
+    instance_id = test_spec.instance_id
+    # This is the full path
+    model_name_or_path = model_name_or_path.replace("/", "__")
+    log_dir = RUN_EVALUATION_LOG_DIR / run_id / model_name_or_path / instance_id / "terminal_output" / str(int(time.time()))
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    # Link the image build dir in the log dir
+    build_dir = INSTANCE_IMAGE_BUILD_DIR / test_spec.instance_image_key.replace(":", "__")
+    image_build_link = log_dir / "image_build_dir"
+    if not image_build_link.exists():
+        try:
+            # link the image build dir in the log dir
+            image_build_link.symlink_to(build_dir.absolute(), target_is_directory=True)
+        except:
+            # some error, idk why
+            pass
+    log_file = log_dir / "run_instance.log"
+
+    logger = setup_logger(instance_id, log_file)
+
+    # Second we stash all the pending changes which we might have done
+    container.exec_run("git clean -fdX", workdir="/testbed", user="root")
+    container.exec_run("git clean -fdx", workdir="/testbed", user="root")
+    container.exec_run("git add . && git stash", workdir="/testbed", user="root")
+    # container_git_diff = container.exec_run("git status", workdir="/testbed", user="root")
+    # print('git status container', container_git_diff.output.decode('utf-8'))
+    # container_git_diff = container.exec_run("git stash show -p", workdir="/testbed", user="root")
+    # print('git stash show -p inside container', container_git_diff.output.decode('utf-8'))
+    
+    
     # Now we get the patch file we are interested in
     # - First add all the files which are there to the git tracking so we can track them
     _ = subprocess.check_output(["git", "add", "."], cwd=git_drname).decode("utf-8")
@@ -341,13 +380,28 @@ def run_terminal_command(
             print(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
     else:
         print(f"{APPLY_PATCH_PASS}:\n{val.output.decode('utf-8')}")
+    
+    terminal_file = Path(log_dir / "eval.sh")
 
+    terminal_script_list = make_eval_script_for_terminal_command(
+        instance=instance,
+        specs=MAP_REPO_VERSION_TO_SPECS[instance['repo']][instance['version']],
+        env_name="testbed",
+        repo_directory="/testbed",
+        terminal_command=command,
+        git_drname=git_drname,
+    )
+    eval_script = "\n".join(["#!/bin/bash", "set -uxo pipefail"] + terminal_script_list) + "\n"
+    terminal_file.write_text(eval_script)
+    logger.info(f"Terminal script for {instance_id} written to {terminal_file}; copying to container...")
+    copy_to_container(container=container, src=terminal_file, dst=Path("/eval.sh"))
 
-    # Now we have applied the patch, we can run the command we are interested in
-    # on the docker container
-    # /testbed is the directory where the repo is checked out
-    command_output = container.exec_run(f"{command}", workdir="/testbed").output.decode("utf-8").strip()
-    return command_output
+    # Run the script and then write the output to the logs
+    terminal_output, timed_out, total_runtime, exit_code = exec_run_with_timeout_and_error_code_only_stdout(container, "/bin/bash /eval.sh", timeout)
+    terminal_output_path = log_dir / "terminal_output.txt"
+    with open(terminal_output_path, "w") as f:
+        f.write(terminal_output)
+    return terminal_output
 
 
 def run_instance(
@@ -862,6 +916,10 @@ async def main_sidecar(
         log_directory = debug_container_details[1]
         # Lambda which executes the terminal command
         terminal_command_runner = lambda command: run_terminal_command(
+            test_spec=test_spec,
+            instance=dataset_part,
+            run_id=run_id,
+            model_name_or_path="sidecar",
             command=command,
             git_drname=git_tempdir,
             container=debug_container,
