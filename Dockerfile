@@ -1,22 +1,19 @@
-# Stage 1: Docker CLI/Engine
-FROM --platform=linux/amd64 docker:dind AS docker_base
+FROM --platform=linux/amd64 python:3.11.6
 
+# Set working directory
 WORKDIR /app
 
-# Install Python 3 and venv
-RUN apk add --no-cache python3
-
-# Create and activate virtual environment
+# Create venv
 RUN python3 -m venv venv
-ENV PATH="/app/venv/bin:$PATH"
 
-COPY requirements.txt .
+# Copy all files
+COPY . .
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Activate venv and install dependencies
+RUN source venv/bin/activate && \
+    pip3 install --upgrade pip && \
+    pip3 install -r requirements.txt && \
+    pip3 install -e .
 
-# Copy /swebench files after installing dependencies
-COPY ./swebench ./swebench
-
-# Start dockerd and your application
-ENTRYPOINT ["dockerd-entrypoint.sh"]
+# Keep container running for development/debugging
+CMD ["tail", "-f", "/dev/null"]
