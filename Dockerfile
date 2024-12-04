@@ -1,28 +1,24 @@
-# Stage 1: Docker CLI/Engine
-FROM --platform=linux/amd64 docker:dind AS docker_base
+FROM --platform=linux/amd64 python:3.11.6
 
+# Set working directory
 WORKDIR /app
 
-# Install Python 3 and venv
-RUN apk add python3
-
-# Install build dependencies
-RUN apk add \
-    cmake \
-    make \
-    gcc \
-    g++ \
-    musl-dev \
-    python3-dev
-
-COPY . .
-
+# Create venv
 RUN python3 -m venv venv
-ENV PATH="/app/venv/bin:$PATH"
+
+# Copy only requirements first to leverage caching
+COPY requirements.txt .
 
 # Install dependencies
-RUN pip3 install -r requirements.txt
-RUN pip3 install -e .
+RUN . venv/bin/activate && \
+    pip3 install --upgrade pip && \
+    pip3 install -r requirements.txt
 
-# Start dockerd and your application
-ENTRYPOINT ["dockerd-entrypoint.sh"]
+# Copy the rest of the application
+COPY . .
+
+# Install the package in editable mode
+RUN . venv/bin/activate && \
+    pip3 install -e .
+
+ENTRYPOINT ["tail", "-f", "/dev/null"]
