@@ -123,11 +123,16 @@ def run_instance_for_test_path(
 
     # Create the git diff as a patch string
     try:
-        git_diff_output = subprocess.check_output(
+        # first git add all the files which are in the git_drname
+        _ = subprocess.check_output(["git", "add", "."], cwd=git_drname).decode("utf-8")
+        git_diff_cached_output = subprocess.check_output(
+            ["git", "diff", "--cached"], cwd=git_drname
+        ).decode("utf-8")
+        git_diff_normal = subprocess.check_output(
             ["git", "diff"], cwd=git_drname
         ).decode("utf-8")
         pred = {
-            "model_patch": git_diff_output,
+            "model_patch": git_diff_cached_output + git_diff_normal,
             "model_name_or_path": model_name_or_path,
             "instance_id": instance_id,
         }
@@ -301,12 +306,17 @@ def run_terminal_command(
     # First we stash all the pending changes which we might have done
     container.exec_run("git stash")
     # Now we get the patch file we are interested in
-    git_diff_output = subprocess.check_output(
+    # - First add all the files which are there to the git tracking so we can track them
+    _ = subprocess.check_output(["git", "add", "."], cwd=git_drname).decode("utf-8")
+    git_diff_cached_output = subprocess.check_output(
+        ["git", "diff", "--cached"], cwd=git_drname
+    ).decode("utf-8")
+    git_diff_normal = subprocess.check_output(
         ["git", "diff"], cwd=git_drname
     ).decode("utf-8")
     patch_file = Path(log_directory / "patch.diff")
-    patch_file.write_text(git_diff_output)
-    print("git_diff_output", git_diff_output)
+    patch_file.write_text(git_diff_cached_output + git_diff_normal)
+    print("git_diff_output::terminal", git_diff_cached_output + git_diff_normal)
     copy_to_container(container, patch_file, Path("/tmp/patch.diff"))
     # Attempt to apply patch to container
     val = container.exec_run(
@@ -934,6 +944,7 @@ async def main_sidecar(
                 initial_patch = variable.get("initial_patch")
                 file_path = variable.get("fs_file_path")
                 
+                # The patch logic might be wrong over here... need to check deeper
                 if initial_patch and file_path:
                     try:
                         print(f"applying patch for {file_path}")
