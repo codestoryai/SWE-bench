@@ -6,14 +6,19 @@ WORKDIR /app
 # Create venv
 RUN python3 -m venv venv
 
-# Copy all files
+# Copy only requirements first to leverage caching
+COPY requirements.txt .
+
+# Install dependencies
+RUN . venv/bin/activate && \
+    pip3 install --upgrade pip && \
+    pip3 install -r requirements.txt
+
+# Copy the rest of the application
 COPY . .
 
-# Activate venv and install dependencies
-RUN source venv/bin/activate && \
-    pip3 install --upgrade pip && \
-    pip3 install -r requirements.txt && \
+# Install the package in editable mode
+RUN . venv/bin/activate && \
     pip3 install -e .
 
-# Keep container running for development/debugging
-CMD ["tail", "-f", "/dev/null"]
+ENTRYPOINT ["tail", "-f", "/dev/null"]

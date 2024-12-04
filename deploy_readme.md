@@ -27,4 +27,4 @@ So, seems like Google Compute Engine has a Docker base, which we may be able to 
 
 
 # So this shit works. As in, GCP compute engine has a docker base, which we may be able to use docker pull from?
-docker run -v -d /var/run/docker.sock:/var/run/docker.sock <image_name>
+docker run -d -v /var/run/docker.sock:/var/run/docker.sock <image_name>
