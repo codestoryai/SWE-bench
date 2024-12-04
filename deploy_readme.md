@@ -19,3 +19,12 @@ gcloud artifacts docker images list europe-west2-docker.pkg.dev/anton-390822/swe
 ```
 docker run --privileged -it europe-west2-docker.pkg.dev/anton-390822/swe-bench/swe-test:latest
 ```
+
+
+
+
+So, seems like Google Compute Engine has a Docker base, which we may be able to use docker pull from?
+
+
+# So this shit works. As in, GCP compute engine has a docker base, which we may be able to use docker pull from?
+docker run -v -d /var/run/docker.sock:/var/run/docker.sock <image_name>
