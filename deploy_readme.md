@@ -28,3 +28,15 @@ docker images
 ```
 docker run -d -v /var/run/docker.sock:/var/run/docker.sock <image_id>
 ```
+
+8. Exec into the container
+```
+docker exec -it <container_id> sh
+```
+
+9. Activate the venv
+```
+. venv/bin/activate
+```
+
+# docker run --privileged -d <image_id>
