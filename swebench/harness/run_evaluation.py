@@ -1109,7 +1109,8 @@ async def main_sidecar(
             f.write(f"Run ID: {run_id}\n")
             f.write(f"Timestamp: {instance_results['timestamp']}\n")
             f.write(f"Success: {instance_results['success']}\n")
-            f.write(f"Total Attempts: {instance_results['total_attempts']}\n")
+            f.write(f"Total Attempts: {instance_results['completion_nodes']}\n")
+            f.write(f"Total Nodes: {instance_results['total_nodes']}\n")
 
 def main(
         dataset_name: str,
