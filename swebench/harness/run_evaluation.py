@@ -1102,15 +1102,21 @@ async def main_sidecar(
 
         print(f"Instance results: {instance_results}")
 
-        with open(f"{output_log_path}", "w") as f:
+        # Get absolute path of MCTS tree file
+        mcts_tree_path = os.path.abspath(mcts_tree)
+
+        with open(f"{output_log_path}", "a") as f:
             f.write("===\n")
             f.write(f"Instance ID: {instance_id}\n")
             f.write("===\n")
             f.write(f"Run ID: {run_id}\n")
             f.write(f"Timestamp: {instance_results['timestamp']}\n")
             f.write(f"Success: {instance_results['success']}\n")
-            f.write(f"Total Attempts: {instance_results['completion_nodes']}\n")
+            f.write(f"Completion Nodes: {instance_results['completion_nodes']}\n")
             f.write(f"Total Nodes: {instance_results['total_nodes']}\n")
+            f.write(f"MCTS Tree Path: {mcts_tree_path}\n")
+
+        print(f"Instance results written to {output_log_path}")
 
 def main(
         dataset_name: str,
