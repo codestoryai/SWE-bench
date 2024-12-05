@@ -1096,7 +1096,8 @@ async def main_sidecar(
             "timestamp": datetime.now().isoformat(),
             "instance_id": instance_id,
             "success": successful_attempt,
-            "total_attempts": len(completed_nodes),
+            "completion_nodes": len(completed_nodes),
+            "total_nodes": len(parsed_mcts_tree["index_to_node"]),
         }
 
         print(f"Instance results: {instance_results}")
