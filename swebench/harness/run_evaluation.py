@@ -1101,9 +1101,14 @@ async def main_sidecar(
 
         print(f"Instance results: {instance_results}")
 
-        # Append the instance results to the output log file in JSONL format
-        with open(output_log_path, "a") as f:
-            f.write(json.dumps(instance_results) + "\n")
+        with open(f"{output_log_path}", "w") as f:
+            f.write("===\n")
+            f.write(f"Instance ID: {instance_id}\n")
+            f.write("===\n")
+            f.write(f"Run ID: {run_id}\n")
+            f.write(f"Timestamp: {instance_results['timestamp']}\n")
+            f.write(f"Success: {instance_results['success']}\n")
+            f.write(f"Total Attempts: {instance_results['total_attempts']}\n")
 
 def main(
         dataset_name: str,
