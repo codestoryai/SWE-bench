@@ -1105,9 +1105,11 @@ async def main_sidecar(
 
         # Get absolute path of MCTS tree file
         mcts_tree_path = os.path.abspath(mcts_tree)
-        parea_link = get_parea_link(run_id)
 
-        with open(f"{output_log_path}", "a") as f:
+        # Compute the absolute path
+        absolute_output_log_path = os.path.abspath(output_log_path)
+
+        with open(absolute_output_log_path, "a") as f:
             f.write("===\n")
             f.write(f"{instance_id}\n")
             f.write("===\n")
@@ -1117,10 +1119,10 @@ async def main_sidecar(
             f.write(f"Completion Nodes: {instance_results['completion_nodes']}\n")
             f.write(f"Total Nodes: {instance_results['total_nodes']}\n")
             f.write(f"MCTS Tree Path: {mcts_tree_path}\n")
-            f.write(f"Parea Link: {parea_link}\n")
+            f.write(f"Parea Link: {get_parea_link(run_id)}\n")
             f.write("===\n\n")
 
-        print(f"Instance results written to {output_log_path}")
+        print(f"Instance results written to {absolute_output_log_path}")
 
 def main(
         dataset_name: str,
