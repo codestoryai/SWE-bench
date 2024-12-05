@@ -1099,6 +1099,8 @@ async def main_sidecar(
             "total_attempts": len(completed_nodes),
         }
 
+        print(f"Instance results: {instance_results}")
+
         # Append the instance results to the output log file in JSONL format
         with open(output_log_path, "a") as f:
             f.write(json.dumps(instance_results) + "\n")
@@ -1192,7 +1194,12 @@ if __name__ == "__main__":
     parser.add_argument("--test_mode", type=bool, default=False, help="If we should run the test agent or the swebench agent, setting to true runs the test generation agent")
     parser.add_argument("--anthropic_api_key", type=str, help="Set the anthropic api key which we should be using")
     parser.add_argument("--output_log_path", type=str, help="Path to the output log file")
+
     args = parser.parse_args()
+
+    # block if output_log_path is not provided
+    if not args.output_log_path:
+        raise ValueError("Output log path must be provided. Usage: --output_log_path <path>")
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
