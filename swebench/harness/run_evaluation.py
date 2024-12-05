@@ -57,6 +57,7 @@ from swebench.editor import (
 from swebench.harness.grading import get_eval_report
 from swebench.harness.test_spec import make_eval_script_for_terminal_command, make_eval_script_for_test_files, make_test_spec, TestSpec
 from swebench.harness.utils import load_swebench_dataset, str2bool
+from swebench.utils import get_parea_link
 
 
 # Contains all the running docker container which are in the dev-loop and their reference
@@ -1104,10 +1105,11 @@ async def main_sidecar(
 
         # Get absolute path of MCTS tree file
         mcts_tree_path = os.path.abspath(mcts_tree)
+        parea_link = get_parea_link(run_id)
 
         with open(f"{output_log_path}", "a") as f:
             f.write("===\n")
-            f.write(f"Instance ID: {instance_id}\n")
+            f.write(f"{instance_id}\n")
             f.write("===\n")
             f.write(f"Run ID: {run_id}\n")
             f.write(f"Timestamp: {instance_results['timestamp']}\n")
@@ -1115,6 +1117,8 @@ async def main_sidecar(
             f.write(f"Completion Nodes: {instance_results['completion_nodes']}\n")
             f.write(f"Total Nodes: {instance_results['total_nodes']}\n")
             f.write(f"MCTS Tree Path: {mcts_tree_path}\n")
+            f.write(f"Parea Link: {parea_link}\n")
+            f.write("===\n\n")
 
         print(f"Instance results written to {output_log_path}")
 
