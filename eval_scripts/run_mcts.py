@@ -22,7 +22,7 @@ async def run_command_for_string(str_input):
         
         # Second command: Run evaluation
         run_command = (
-            f"python3 swebench/harness/run_evaluation.py "
+            f"python3 -u swebench/harness/run_evaluation.py " # -u is for unbuffered output
             f"--dataset_name dataset/verified/output.jsonl "
             f"--instance_ids {str_input} "
             f"--sidecar_executable_path /Users/zi/codestory/sidecar/target/debug/swe_bench_mcts "
@@ -35,13 +35,26 @@ async def run_command_for_string(str_input):
         print(f"Running evaluation for: {str_input}")
         run_process = await asyncio.create_subprocess_shell(
             run_command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
         )
         
-        run_stdout, run_stderr = await run_process.communicate()
-        run_stdout = run_stdout.decode()
-        run_stderr = run_stderr.decode()
+        # Replace communicate() with real-time logging
+        async def read_stream(stream):
+            while True:
+                line = await stream.readline()
+                if not line:
+                    break
+                print(line.decode().rstrip())
+        
+        # Read both stdout and stderr concurrently
+        await asyncio.gather(
+            read_stream(run_process.stdout),
+            read_stream(run_process.stderr)
+        )
+        
+        # Wait for process to complete
+        await run_process.wait()
 
         if pull_process.returncode != 0 or run_process.returncode != 0:
             raise Exception(f"Command failed with exit codes: pull={pull_process.returncode}, run={run_process.returncode}")
