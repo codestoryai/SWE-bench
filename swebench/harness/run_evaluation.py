@@ -962,6 +962,8 @@ async def main_sidecar(
             print("Generating tests and not EDITS")
 
         print("run_evaluation::endpoint_url", endpoint_url)
+
+        start_time = datetime.now()  # Record the start time
         await sidecar_run(
             sidecar_path=sidecar_executable_path,
             git_drname=git_tempdir,
@@ -971,6 +973,10 @@ async def main_sidecar(
             anthropic_api_key=anthropic_api_key,
             log_directory=log_directory,
         )
+
+        end_time = datetime.now()  # Record the end time
+        elapsed_time = end_time - start_time
+        print(f"Time taken for sidecar run: {elapsed_time}")
 
         # Stop our debug container over here
         print("Stopping debug container", debug_container.id)
@@ -1111,16 +1117,17 @@ async def main_sidecar(
 
         with open(absolute_output_log_path, "a") as f:
             f.write("===\n")
-            f.write(f"{instance_id}\n")
-            f.write("===\n")
-            f.write(f"Run ID: {run_id}\n")
-            f.write(f"Timestamp: {instance_results['timestamp']}\n")
+            f.write(f"Instance: {instance_id}\n")
             f.write(f"Success: {instance_results['success']}\n")
-            f.write(f"Completion Nodes: {instance_results['completion_nodes']}\n")
-            f.write(f"Total Nodes: {instance_results['total_nodes']}\n")
+            f.write(f"Time taken: {elapsed_time}\n")
+            f.write("\n")
+            f.write(f"Completion/Total Nodes: {instance_results['completion_nodes']}/{instance_results['total_nodes']}\n")  # Combined for easier parsing
             f.write(f"MCTS Tree Path: {mcts_tree_path}\n")
+            f.write("\n")
+            f.write(f"Run ID: {run_id}\n")
             f.write(f"Parea Link: {get_parea_link(run_id)}\n")
-            f.write("===\n\n")
+            f.write(f"Timestamp: {instance_results['timestamp']}\n")
+            f.write("===\n")
 
         print(f"Instance results written to {absolute_output_log_path}")
 
