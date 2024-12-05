@@ -25,10 +25,12 @@ async def run_command_for_string(str_input):
             f"python3 swebench/harness/run_evaluation.py "
             f"--dataset_name dataset/verified/output.jsonl "
             f"--instance_ids {str_input} "
-            f"--sidecar_executable_path /home/z/sidecar/target/debug/swe_bench_mcts "
-            f"--anthropic_api_key " # key needed
-            f"--output_log_path output.log " # so it appends logs to this
+            f"--sidecar_executable_path /Users/zi/codestory/sidecar/target/debug/swe_bench_mcts "
+            f"--anthropic_api_key " # don't forget to preserve the trailing space
+            f"--output_log_path output.log "
         )
+
+        print(run_command)
         
         print(f"Running evaluation for: {str_input}")
         run_process = await asyncio.create_subprocess_shell(
@@ -71,6 +73,7 @@ async def process_strings(strings):
 if __name__ == "__main__":
 
     instance_ids = [
+        "django__django-13279",
         "django__django-10097",
         "django__django-10554",
         "django__django-10999",
