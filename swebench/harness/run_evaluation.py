@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+from datetime import datetime
 import os
 import subprocess
 from typing import Any, Dict, List, Optional, Tuple
@@ -735,7 +736,7 @@ def make_run_report(
         full_dataset: list,
         client: docker.DockerClient,
         run_id: str
-    ) -> Path:
+    ) -> dict:
     """
     Make a final evaluation and run report of the instances that have been run.
     Also reports on images and containers that may still running!
@@ -747,7 +748,7 @@ def make_run_report(
         run_id (str): Run ID
     
     Returns:
-        Path to report file
+        dict: Concise report
     """
     # instantiate sets to store IDs of different outcomes
     completed_ids = set()
@@ -845,7 +846,17 @@ def make_run_report(
     with open(report_file, "w") as f:
         print(json.dumps(report, indent=4), file=f)
     print(f"Report written to {report_file}")
-    return report_file
+
+    concise_report = {
+        "total_instances": len(full_dataset),
+        "submitted_instances": len(predictions),
+        "completed_instances": len(completed_ids),
+        "instances_incomplete": len(incomplete_ids),
+        "instances_resolved": len(resolved_ids),
+        "instances_unresolved": len(unresolved_ids),
+    }
+
+    return concise_report
 
 
 def get_gold_predictions(dataset_name: str, split: str):
@@ -872,6 +883,7 @@ async def main_sidecar(
     timeout: int,
     anthropic_api_key: str,
     test_mode: bool,
+    output_log_path: str,
     **kwargs,
 ):
     """
@@ -987,7 +999,10 @@ async def main_sidecar(
         # Now that we have the tree we need to be smar on top of it
         completed_nodes = [int(index) for index, node in parsed_mcts_tree["index_to_node"].items()
                            if node.get("action") and "AttemptCompletion" in str(node["action"])]
-        
+
+        instance_id = dataset_part['instance_id']
+        successful_attempt = False  # Track if any attempt succeeded
+
         # Now iterate over the completed nodes
         for completed_node in completed_nodes:
             print(f"Evaluating {completed_node}")
@@ -1025,10 +1040,6 @@ async def main_sidecar(
             print(f"Finished updating repo for node: {completed_node}")
 
             # run evaluation now
-            # Create the predictions by looking at the git-diff output
-            # this needs to be in the special format mentioned over here
-
-            # Empty the predictions
             predictions = []
             try:
                 git_diff_output = subprocess.check_output(
@@ -1042,11 +1053,9 @@ async def main_sidecar(
                 })
             except subprocess.CalledProcessError as e:
                 print(f"Failed to create git diff: {e}")
-
+                continue
 
             print(f"Running evaluation for {completed_node}")
-
-            print("run_evaluation::predictions", len(predictions))
             predictions = {pred[KEY_INSTANCE_ID]: pred for pred in predictions}
 
             client = docker.from_env()
@@ -1067,8 +1076,32 @@ async def main_sidecar(
                 run_instances(predictions, dataset, "none", False, False, max_workers, run_id, 1_800)
 
             clean_images(client, existing_images, "none", False)
-            make_run_report(predictions, full_dataset, client, run_id)
+            concise_report = make_run_report(predictions, full_dataset, client, run_id)
+            
+            # Check if this attempt was successful
+            if concise_report["completed_instances"] == 1:
+                successful_attempt = True
+                print(f"✅ Successful solution found for {instance_id} at node {completed_node}")
+                break  # Optional: stop after first success
+            else:
+                print(f"❌ Attempt failed for {instance_id} at node {completed_node}")
 
+        # After all nodes are processed, report final status for this instance
+        status = "SUCCESS" if successful_attempt else "FAILURE" 
+        print(f"Final status for {instance_id}: {status}")
+        
+        # Collect results in a dictionary
+        instance_results = {
+            "run_id": run_id,
+            "timestamp": datetime.now().isoformat(),
+            "instance_id": instance_id,
+            "success": successful_attempt,
+            "total_attempts": len(completed_nodes),
+        }
+
+        # Append the instance results to the output log file in JSONL format
+        with open(output_log_path, "a") as f:
+            f.write(json.dumps(instance_results) + "\n")
 
 def main(
         dataset_name: str,
@@ -1158,6 +1191,7 @@ if __name__ == "__main__":
     parser.add_argument("--sidecar_executable_path", type=str, help="Path to the sidecar binary")
     parser.add_argument("--test_mode", type=bool, default=False, help="If we should run the test agent or the swebench agent, setting to true runs the test generation agent")
     parser.add_argument("--anthropic_api_key", type=str, help="Set the anthropic api key which we should be using")
+    parser.add_argument("--output_log_path", type=str, help="Path to the output log file")
     args = parser.parse_args()
 
     loop = asyncio.new_event_loop()

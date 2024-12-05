@@ -27,6 +27,7 @@ async def run_command_for_string(str_input):
             f"--instance_ids {str_input} "
             f"--sidecar_executable_path /home/z/sidecar/target/debug/swe_bench_mcts "
             f"--anthropic_api_key " # key needed
+            f"--output_log_path output.log " # so it appends logs to this
         )
         
         print(f"Running evaluation for: {str_input}")
@@ -39,23 +40,6 @@ async def run_command_for_string(str_input):
         run_stdout, run_stderr = await run_process.communicate()
         run_stdout = run_stdout.decode()
         run_stderr = run_stderr.decode()
-        
-        # Log both commands' output
-        with open('output.log', 'a') as f:
-            f.write(
-                f"\n=== Processing {str_input} at {datetime.now()} ===\n"
-                f"--- Docker Pull ---\n"
-                f"Command: {pull_command}\n"
-                f"stdout: {pull_stdout}\n"
-                f"stderr: {pull_stderr}\n"
-                f"Exit code: {pull_process.returncode}\n"
-                f"\n--- Evaluation Run ---\n"
-                f"Command: {run_command}\n"
-                f"stdout: {run_stdout}\n"
-                f"stderr: {run_stderr}\n"
-                f"Exit code: {run_process.returncode}\n"
-                f"=====================================\n"
-            )
 
         if pull_process.returncode != 0 or run_process.returncode != 0:
             raise Exception(f"Command failed with exit codes: pull={pull_process.returncode}, run={run_process.returncode}")
@@ -64,10 +48,6 @@ async def run_command_for_string(str_input):
     
     except Exception as error:
         print(f"Error processing {str_input}:", error)
-        with open('output.log', 'a') as f:
-            f.write(
-                f"\n!!! Error for: {str_input} at {datetime.now()} !!!\n{str(error)}\n"
-            )
         return {'success': False, 'string': str_input, 'error': str(error)}
 
 async def process_strings(strings):
