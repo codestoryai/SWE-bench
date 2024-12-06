@@ -1,8 +1,16 @@
-from argparse import ArgumentParser
-import os
-import subprocess
 import asyncio
+import logging
+import json
+import os
 from time import time
+from argparse import ArgumentParser
+
+# Set up structured logging
+logger = logging.getLogger("batch_processor")
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter('%(message)s'))
+logger.addHandler(handler)
 
 async def run_command_for_instance(instance_id, anthropic_api_key, sidecar_binary_path, run_id):
     try:
@@ -14,8 +22,8 @@ async def run_command_for_instance(instance_id, anthropic_api_key, sidecar_binar
         print(f"\nPulling Docker image for: {instance_id}")
         pull_process = await asyncio.create_subprocess_shell(
             pull_command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
         )
         
         pull_stdout, pull_stderr = await pull_process.communicate()
@@ -70,42 +78,89 @@ async def run_command_for_instance(instance_id, anthropic_api_key, sidecar_binar
         print(f"Error processing {instance_id}:", error)
         return {'success': False, 'string': instance_id, 'error': str(error)}
 
-async def process_instances(instances, anthropic_api_key, sidecar_binary_path):
-    print('Starting processing...')
-    results = []
 
-    current_timestamp = int(time())  # will be run_id
-    print(f"Current timestamp: {current_timestamp}")
-    
-    for instance_id in instances:
-        result = await run_command_for_instance(instance_id, anthropic_api_key, sidecar_binary_path, current_timestamp)
-        results.append(result)
-        
-        # Log summary after each string is processed
-        success = result['success']
-        status = "✓ Success" if success else "✗ Failed"
-        print(f"{status}: {instance_id}")
-    
-    # Print final summary
-    successful = sum(1 for r in results if r['success'])
-    print(f'\nProcessing complete! {successful}/{len(instances)} successful')
+async def process_batch(batch, anthropic_api_key, sidecar_binary_path, run_id, start_index):
+    """
+    Process a single batch of instance_ids concurrently.
+    `start_index` is the index of the first instance in the overall sequence, for logging.
+    """
+    tasks = [
+        run_command_for_instance(instance_id, anthropic_api_key, sidecar_binary_path, run_id)
+        for instance_id in batch
+    ]
+    results = await asyncio.gather(*tasks, return_exceptions=False)
 
-# Example usage
+    # Log results for this batch
+    for i, result in enumerate(results):
+        # Structured logging as JSON
+        # This makes it easy to grep or parse logs later.
+        log_entry = {
+            "event": "instance_processed",
+            "instance_id": result["instance_id"],
+            "batch_start_index": start_index,
+            "success": result["success"],
+            "error": result["error"],
+            "timestamp": result["timestamp"]
+        }
+        logger.info(json.dumps(log_entry))
+
+    return results
+
+async def process_all_instances(instances, anthropic_api_key, sidecar_binary_path):
+    logger.info(json.dumps({"event": "start_processing", "total_instances": len(instances)}))
+
+    run_id = int(time())  # Could also be a UUID or another unique ID
+    batch_size = 10
+    total = len(instances)
+    completed = 0
+
+    # Break instances into batches of 10
+    for start in range(0, total, batch_size):
+        batch = instances[start:start+batch_size]
+
+        # Log that we're starting a new batch
+        logger.info(json.dumps({
+            "event": "start_batch",
+            "batch_index": start // batch_size,
+            "batch_size": len(batch),
+            "run_id": run_id
+        }))
+
+        # Process this batch concurrently
+        results = await process_batch(batch, anthropic_api_key, sidecar_binary_path, run_id, start)
+
+        # Count how many succeeded
+        batch_success = sum(r["success"] for r in results)
+        batch_failure = len(batch) - batch_success
+        completed += len(batch)
+
+        # Log batch summary
+        logger.info(json.dumps({
+            "event": "end_batch",
+            "batch_index": start // batch_size,
+            "batch_completed": len(batch),
+            "batch_success": batch_success,
+            "batch_failure": batch_failure,
+            "total_completed": completed,
+            "total_remaining": total - completed,
+            "run_id": run_id
+        }))
+
+    # Final summary after all batches
+    logger.info(json.dumps({
+        "event": "end_processing",
+        "total_instances": total,
+        "total_completed": completed,
+        "run_id": run_id
+    }))
+
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--anthropic_api_key", type=str, help="Set the anthropic api key which we should be using")
-    parser.add_argument("--sidecar_binary_path", type=str, help="Set the sidecar binary path which we should be using")
-    parser.add_argument("--instances_file", type=str, help="Path to file containing instance IDs")
-    
+    parser.add_argument("--anthropic_api_key", type=str, required=True, help="Anthropic API key")
+    parser.add_argument("--sidecar_binary_path", type=str, required=True, help="Sidecar binary path")
+    parser.add_argument("--instances_file", type=str, required=True, help="Path to file containing instance IDs")
     args = parser.parse_args()
 
-    if not args.anthropic_api_key:
-        raise ValueError("Anthropic API key must be provided. Usage: --anthropic_api_key <key>")
-
-    if not args.sidecar_binary_path:
-        raise ValueError("Sidecar binary path must be provided. Usage: --sidecar_binary_path <path>")
-    
-     # Read instance IDs from file
     if not os.path.exists(args.instances_file):
         raise ValueError(f"Instances file not found: {args.instances_file}")
 
@@ -113,9 +168,5 @@ if __name__ == "__main__":
     with open(args.instances_file, 'r') as f:
         instance_ids = [line.strip() for line in f if line.strip()]
 
-    print(f"Processing {len(instance_ids)} instances")
-
-    anthropic_api_key = args.anthropic_api_key
-    sidecar_binary_path = args.sidecar_binary_path
-
-    asyncio.run(process_instances(instance_ids, anthropic_api_key, sidecar_binary_path)) 
+    # Run the main process
+    asyncio.run(process_all_instances(instance_ids, args.anthropic_api_key, args.sidecar_binary_path))
