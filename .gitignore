@@ -172,3 +172,7 @@ notebooks/
 *logs/
 
 sidecar.*.json
+
+# google service account credentials
+credentials.json
+token.json
