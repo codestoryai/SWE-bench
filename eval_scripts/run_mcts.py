@@ -90,20 +90,6 @@ async def process_batch(batch, anthropic_api_key, sidecar_binary_path, run_id, s
     ]
     results = await asyncio.gather(*tasks, return_exceptions=False)
 
-    # Log results for this batch
-    for i, result in enumerate(results):
-        # Structured logging as JSON
-        # This makes it easy to grep or parse logs later.
-        log_entry = {
-            "event": "instance_processed",
-            "instance_id": result["instance_id"],
-            "batch_start_index": start_index,
-            "success": result["success"],
-            "error": result["error"],
-            "timestamp": result["timestamp"]
-        }
-        logger.info(json.dumps(log_entry))
-
     return results
 
 async def process_all_instances(instances, anthropic_api_key, sidecar_binary_path):
