@@ -65,7 +65,6 @@ from swebench.utils import get_parea_link
 DEV_DOCKER_CONTAINERS: List[docker.models.containers.Container] = []
 
 def signal_handler(sig, frame):
-    print("Stopping dev docker containers....")
     for container in DEV_DOCKER_CONTAINERS:
         print("Stopping {}", container.id)
         container.stop()
