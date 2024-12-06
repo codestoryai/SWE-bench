@@ -192,7 +192,7 @@ def make_eval_script_for_terminal_command(instance: SWEbenchInstance, specs, env
     ]
     if "install" in specs:
         eval_commands.append(specs["install"])
-    if "reproduce_error.py.py" in terminal_command:
+    if "reproduce_error.py" in terminal_command:
         eval_commands += [
             'echo "<<<<<<<<<<<<<< START OF reproduce_error.py STDOUT"',
             'echo "<<<<<<<<<<<<<< START of reproduce_error.py STDERR" > /dev/stderr',
