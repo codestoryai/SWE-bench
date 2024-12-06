@@ -224,7 +224,7 @@ def exec_run_with_timeout_and_error_code_only_stdout(container: docker.models.co
             container.exec_run(f"kill -TERM {exec_pid}", detach=True)
         timed_out = True
     end_time = time.time()
-    final_output = f"{exec_result_stdout.decode()}"
+    final_output = f"Stdout:\n{exec_result_stdout.decode()}\nStderr:{exec_result_stderr.decode()}"
     return final_output, timed_out, end_time - start_time, exec_code
 
 def exec_run_with_timeout_and_error_code(container: docker.models.containers.Container, cmd, timeout: int|None=60):
