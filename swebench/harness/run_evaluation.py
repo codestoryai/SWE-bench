@@ -156,6 +156,9 @@ def run_instance_for_test_path(
         container.exec_run("git clean -fdX", workdir="/testbed", user="root")
         container.exec_run("git clean -fdx", workdir="/testbed", user="root")
         container.exec_run("git add . && git stash", workdir="/testbed", user="root")
+        # Run git reset to clean up the container repo properly
+        container.exec_run(f"git rest --hard {instance['base_commit']}", workdir="/testbed", user="root")
+
         copy_to_container(container, patch_file, Path("/tmp/patch.diff"))
 
         # Attempt to apply patch to container
@@ -344,6 +347,8 @@ def run_terminal_command(
     container.exec_run("git clean -fdX", workdir="/testbed", user="root")
     container.exec_run("git clean -fdx", workdir="/testbed", user="root")
     container.exec_run("git add . && git stash", workdir="/testbed", user="root")
+    # Run git reset to clean up the container repo properly
+    container.exec_run(f"git rest --hard {instance['base_commit']}", workdir="/testbed", user="root")
     container_git_diff = container.exec_run("git status", workdir="/testbed", user="root")
     print('git status container', container_git_diff.output.decode('utf-8'))
     container_git_diff = container.exec_run("git stash show -p", workdir="/testbed", user="root")
@@ -413,6 +418,8 @@ def run_terminal_command(
     container.exec_run("git clean -fdX", workdir="/testbed", user="root")
     container.exec_run("git clean -fdx", workdir="/testbed", user="root")
     container.exec_run("git add . && git stash", workdir="/testbed", user="root")
+    # Run git reset to clean up the container repo properly
+    container.exec_run(f"git rest --hard {instance['base_commit']}", workdir="/testbed", user="root")
     return terminal_output
 
 
