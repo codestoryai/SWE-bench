@@ -69,11 +69,64 @@ def add_column(spreadsheet_id, sheet_id, at_index=0):
 
     return response
 
+def column_index_to_letter(index):
+    """
+    Convert a zero-based column index into an Excel-style column letter (A, B, C, ...).
+    For example: 0 -> A, 1 -> B, 2 -> C, ...
+    """
+    result = ""
+    while index >= 0:
+        result = chr(index % 26 + ord('A')) + result
+        index = index // 26 - 1
+    return result
+
+def set_cell_value(spreadsheet_id, sheet_name, row, col_index, value):
+    """
+    Sets the value of a single cell given by row and zero-based column index.
+    Rows and columns here are zero-based, but the Sheets API expects a 1-based row number and a letter-based column.
+    """
+    service = get_sheets_service()
+    col_letter = column_index_to_letter(col_index)
+    print(f"Setting cell {col_letter}{row + 1} to {value}")
+    cell_range = f"{sheet_name}!{col_letter}{row + 1}"  # Convert zero-based row to 1-based
+    body = {
+        "values": [[value]]
+    }
+    service.spreadsheets().values().update(
+        spreadsheetId=spreadsheet_id,
+        range=cell_range,
+        valueInputOption="RAW",
+        body=body
+    ).execute()
+
+def name_column(spreadsheet_id, sheet_name, column_index, column_name):
+    set_cell_value(spreadsheet_id, sheet_name, 0, column_index, column_name)
+
+def find_row_by_instance_id(spreadsheet_id, sheet_name, instance_id):
+    """
+    Given an instance_id, find the row index where it's located in the third column (column C).
+    Returns zero-based row index of the matching instance_id, or None if not found.
+    """
+    service = get_sheets_service()
+    # Assume the third column might have a large range; adjust as needed
+    read_range = f"{sheet_name}!C:C"
+    result = service.spreadsheets().values().get(
+        spreadsheetId=spreadsheet_id, range=read_range
+    ).execute()
+    values = result.get("values", [])
+    # values is a list of lists, each sublist is a row
+    for i, row in enumerate(values):
+        if row and row[0] == instance_id:
+            return i
+    return None
 
 def main():
     LOG_SHEET_ID = "1W0gxh-NC9Sl01yrlTRPNGvyDQva3_lZPPPMQ2M8IP74"
     # RANGE_NAME = "A1:X254"
-    GRID_ID = "280623479" # the ID of the 'RUN' sheet
+    LOG_SHEET_NAME = "RUNS"
+
+    # Sheet ID can be found in the URL of the sheet. It is the number after gid=
+    SHEET_ID = "280623479" # the ID of the 'RUN' sheet
 
     try:
         # Example of adding a column: You need the sheetId (not the name).
@@ -81,10 +134,25 @@ def main():
         # For demonstration, we assume a sheetId of 0 (often the first sheet).
         run_column_index = 3
 
-        add_column_response = add_column(LOG_SHEET_ID, sheet_id=GRID_ID, at_index=run_column_index)
+        add_column_response = add_column(LOG_SHEET_ID, sheet_id=SHEET_ID, at_index=run_column_index)
         spreadsheetId = add_column_response["spreadsheetId"]
-        print(f"Column added to {GRID_ID} at index {run_column_index}")
-        print(f"Sheet url: https://docs.google.com/spreadsheets/d/{spreadsheetId}/edit#gid={GRID_ID}")
+        print(f"Column added to {SHEET_ID} at index {run_column_index}")
+
+        column_name = "date/month/year"
+        name_column(LOG_SHEET_ID, LOG_SHEET_NAME, run_column_index, column_name)
+
+        # Suppose we have an instance_id "django_123" in column A and we want to place a value in the new column.
+        instance_id = "django__django-11734"
+        row_index = find_row_by_instance_id(LOG_SHEET_ID, LOG_SHEET_NAME, instance_id)
+
+        if row_index is not None:
+            # Set a value in this row, newly created column at index 3
+            set_cell_value(spreadsheetId, LOG_SHEET_NAME, row_index, run_column_index, "My New Value")
+            print(f"Value set for {instance_id} at row {row_index}, column {run_column_index}.")
+        else:
+            print(f"Instance ID {instance_id} not found.")
+
+        print(f"Sheet url: https://docs.google.com/spreadsheets/d/{spreadsheetId}/edit#gid={SHEET_ID}")
 
     except HttpError as err:
         print(err)
