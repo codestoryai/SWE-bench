@@ -1086,7 +1086,7 @@ async def main_sidecar(
             concise_report = make_run_report(predictions, full_dataset, client, run_id)
             
             # Check if this attempt was successful
-            if concise_report["completed_instances"] == 1:
+            if concise_report["instances_resolved"] > 0:
                 successful_attempt = True
                 print(f"✅ Successful solution found for {instance_id} at node {completed_node}")
                 break  # Optional: stop after first success
