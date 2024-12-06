@@ -21,6 +21,7 @@ from tqdm import tqdm
 
 from swebench.editor.setup_repo import checkout_repo
 from swebench.editor.sidecar import sidecar_run
+from swebench.google_sheets import update_instance_run_status
 from swebench.harness.constants import (
     APPLY_PATCH_FAIL,
     APPLY_PATCH_PASS,
@@ -1093,9 +1094,8 @@ async def main_sidecar(
             else:
                 print(f"❌ Attempt failed for {instance_id} at node {completed_node}")
 
-        # After all nodes are processed, report final status for this instance
-        status = "SUCCESS" if successful_attempt else "FAILURE" 
-        print(f"Final status for {instance_id}: {status}")
+        # Get absolute path of MCTS tree file
+        mcts_tree_path = os.path.abspath(mcts_tree)
         
         # Collect results in a dictionary
         instance_results = {
@@ -1105,31 +1105,30 @@ async def main_sidecar(
             "success": successful_attempt,
             "completion_nodes": len(completed_nodes),
             "total_nodes": len(parsed_mcts_tree["index_to_node"]),
+            "time_taken": str(elapsed_time),
+            "mcts_tree_path": mcts_tree_path,
+            "parea_link": get_parea_link(run_id),
         }
 
         print(f"Instance results: {instance_results}")
 
-        # Get absolute path of MCTS tree file
-        mcts_tree_path = os.path.abspath(mcts_tree)
-
         # Compute the absolute path
         absolute_output_log_path = os.path.abspath(output_log_path)
 
+        # Write the JSON output
         with open(absolute_output_log_path, "a") as f:
-            f.write("===\n")
-            f.write(f"Instance: {instance_id}\n")
-            f.write(f"Success: {instance_results['success']}\n")
-            f.write(f"Time taken: {elapsed_time}\n")
-            f.write("\n")
-            f.write(f"Completion/Total Nodes: {instance_results['completion_nodes']}/{instance_results['total_nodes']}\n")  # Combined for easier parsing
-            f.write(f"MCTS Tree Path: {mcts_tree_path}\n")
-            f.write("\n")
-            f.write(f"Run ID: {run_id}\n")
-            f.write(f"Parea Link: {get_parea_link(run_id)}\n")
-            f.write(f"Timestamp: {instance_results['timestamp']}\n")
-            f.write("===\n")
+            json.dump(instance_results, f, indent=2)
+            f.write("\n")  # Add newline between JSON objects
 
         print(f"Instance results written to {absolute_output_log_path}")
+
+        # https://docs.google.com/spreadsheets/d/1W0gxh-NC9Sl01yrlTRPNGvyDQva3_lZPPPMQ2M8IP74/edit?gid=280623479#gid=280623479
+        LOG_SHEET_ID = "1W0gxh-NC9Sl01yrlTRPNGvyDQva3_lZPPPMQ2M8IP74"
+        SHEET_ID = 280623479
+        LOG_SHEET_NAME = "RUNS"
+
+        # Update the instance run status in the spreadsheet
+        update_instance_run_status(LOG_SHEET_ID, SHEET_ID, LOG_SHEET_NAME, run_id, instance_id, successful_attempt, instance_results)
 
 def main(
         dataset_name: str,

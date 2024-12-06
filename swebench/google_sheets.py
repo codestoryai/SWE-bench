@@ -88,6 +88,9 @@ def find_row_by_instance_id(spreadsheet_id, sheet_name, instance_id):
     return None
 
 def timestamp_to_readable(timestamp):
+    # Handle string timestamps by converting to float first
+    if isinstance(timestamp, str):
+        timestamp = float(timestamp)
     return datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
 
 def get_header_row(spreadsheet_id, sheet_name):
