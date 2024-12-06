@@ -1226,6 +1226,12 @@ if __name__ == "__main__":
     # block if output_log_path is not provided
     if not args.output_log_path:
         raise ValueError("Output log path must be provided. Usage: --output_log_path <path>")
+    
+    # block if run_id is not provided
+    if not args.run_id:
+        raise ValueError("Run ID must be provided. Usage: --run_id <run_id>")
+    
+    print(f"Run ID: {args.run_id}")
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)

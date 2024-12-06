@@ -1,8 +1,10 @@
+from argparse import ArgumentParser
 import subprocess
 import asyncio
 from datetime import datetime
+from time import time
 
-async def run_command_for_string(str_input):
+async def run_command_for_string(str_input, anthropic_api_key, sidecar_binary_path):
     try:
         # First command: Docker pull - this is Django-specific
         docker_name = str_input.replace('django__django-', 'django_1776_django-')
@@ -19,15 +21,20 @@ async def run_command_for_string(str_input):
         pull_stdout, pull_stderr = await pull_process.communicate()
         pull_stdout = pull_stdout.decode()
         pull_stderr = pull_stderr.decode()
+
+        current_timestamp = int(time())  # Returns seconds since epoch (Jan 1, 1970)
+        print(f"Current timestamp: {current_timestamp}")
+        output_log_path = f"output_{current_timestamp}.log"
         
         # Second command: Run evaluation
         run_command = (
             f"python3 -u swebench/harness/run_evaluation.py " # -u is for unbuffered output
             f"--dataset_name dataset/verified/output.jsonl "
             f"--instance_ids {str_input} "
-            f"--sidecar_executable_path /Users/zi/codestory/sidecar/target/debug/swe_bench_mcts "
-            f"--anthropic_api_key " # don't forget to preserve the trailing space
-            f"--output_log_path output.log "
+            f"--sidecar_executable_path {sidecar_binary_path} "
+            f"--anthropic_api_key {anthropic_api_key} " # don't forget to preserve the trailing space
+            f"--run_id {current_timestamp} "
+            f"--output_log_path {output_log_path} "
         )
 
         print(run_command)
@@ -65,12 +72,12 @@ async def run_command_for_string(str_input):
         print(f"Error processing {str_input}:", error)
         return {'success': False, 'string': str_input, 'error': str(error)}
 
-async def process_strings(strings):
+async def process_strings(strings, anthropic_api_key, sidecar_binary_path):
     print('Starting processing...')
     results = []
     
     for str_input in strings:
-        result = await run_command_for_string(str_input)
+        result = await run_command_for_string(str_input, anthropic_api_key, sidecar_binary_path)
         results.append(result)
         
         # Log summary after each string is processed
@@ -84,6 +91,19 @@ async def process_strings(strings):
 
 # Example usage
 if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("--anthropic_api_key", type=str, help="Set the anthropic api key which we should be using")
+    parser.add_argument("--sidecar_binary_path", type=str, help="Set the sidecar binary path which we should be using")
+    args = parser.parse_args()
+
+    if not args.anthropic_api_key:
+        raise ValueError("Anthropic API key must be provided. Usage: --anthropic_api_key <key>")
+
+    if not args.sidecar_binary_path:
+        raise ValueError("Sidecar binary path must be provided. Usage: --sidecar_binary_path <path>")
+
+    anthropic_api_key = args.anthropic_api_key
+    sidecar_binary_path = args.sidecar_binary_path
 
     instance_ids = [
         "django__django-13279",
@@ -198,4 +218,4 @@ if __name__ == "__main__":
         "django__django-17084",
     ]
     
-    asyncio.run(process_strings(instance_ids)) 
+    asyncio.run(process_strings(instance_ids, anthropic_api_key, sidecar_binary_path)) 
