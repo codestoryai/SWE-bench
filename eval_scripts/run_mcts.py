@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+import os
 import subprocess
 import asyncio
 from time import time
@@ -94,6 +95,8 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--anthropic_api_key", type=str, help="Set the anthropic api key which we should be using")
     parser.add_argument("--sidecar_binary_path", type=str, help="Set the sidecar binary path which we should be using")
+    parser.add_argument("--instances_file", type=str, help="Path to file containing instance IDs")
+    
     args = parser.parse_args()
 
     if not args.anthropic_api_key:
@@ -101,121 +104,18 @@ if __name__ == "__main__":
 
     if not args.sidecar_binary_path:
         raise ValueError("Sidecar binary path must be provided. Usage: --sidecar_binary_path <path>")
+    
+     # Read instance IDs from file
+    if not os.path.exists(args.instances_file):
+        raise ValueError(f"Instances file not found: {args.instances_file}")
+
+    # Read instance IDs from text file
+    with open(args.instances_file, 'r') as f:
+        instance_ids = [line.strip() for line in f if line.strip()]
+
+    print(f"Processing {len(instance_ids)} instances")
 
     anthropic_api_key = args.anthropic_api_key
     sidecar_binary_path = args.sidecar_binary_path
 
-    instance_ids = [
-        "django__django-13279",
-        "django__django-10097",
-        "django__django-10554",
-        "django__django-10999",
-        "django__django-11087",
-        "django__django-11138",
-        "django__django-11141",
-        "django__django-11149",
-        "django__django-11206",
-        "django__django-11239",
-        "django__django-11265",
-        "django__django-11299",
-        "django__django-11333",
-        "django__django-11400",
-        "django__django-11433",
-        "django__django-11477",
-        "django__django-11490",
-        "django__django-11532",
-        "django__django-11555",
-        "django__django-11728",
-        "django__django-11734",
-        "django__django-11740",
-        "django__django-11790",
-        "django__django-11820",
-        "django__django-11848",
-        "django__django-11885",
-        "django__django-11964",
-        "django__django-12039",
-        "django__django-12125",
-        "django__django-12262",
-        "django__django-12273",
-        "django__django-12308",
-        "django__django-12325",
-        "django__django-12406",
-        "django__django-12663",
-        "django__django-12754",
-        "django__django-12774",
-        "django__django-12965",
-        "django__django-13023",
-        "django__django-13112",
-        "django__django-13121",
-        "django__django-13128",
-        "django__django-13158",
-        "django__django-13195",
-        "django__django-13212",
-        "django__django-13297",
-        "django__django-13344",
-        "django__django-13346",
-        "django__django-13406",
-        "django__django-13449",
-        "django__django-13512",
-        "django__django-13513",
-        "django__django-13551",
-        "django__django-13568",
-        "django__django-13794",
-        "django__django-13807",
-        "django__django-13810",
-        "django__django-13925",
-        "django__django-14011",
-        "django__django-14034",
-        "django__django-14053",
-        "django__django-14122",
-        "django__django-14140",
-        "django__django-14155",
-        "django__django-14170",
-        "django__django-14311",
-        "django__django-14315",
-        "django__django-14351",
-        "django__django-14376",
-        "django__django-14404",
-        "django__django-14500",
-        "django__django-14534",
-        "django__django-14559",
-        "django__django-14580",
-        "django__django-14631",
-        "django__django-14725",
-        "django__django-14771",
-        "django__django-14792",
-        "django__django-15037",
-        "django__django-15098",
-        "django__django-15127",
-        "django__django-15161",
-        "django__django-15252",
-        "django__django-15280",
-        "django__django-15375",
-        "django__django-15503",
-        "django__django-15554",
-        "django__django-15563",
-        "django__django-15629",
-        "django__django-15695",
-        "django__django-15732",
-        "django__django-15916",
-        "django__django-15930",
-        "django__django-15957",
-        "django__django-15973",
-        "django__django-16082",
-        "django__django-16256",
-        "django__django-16263",
-        "django__django-16315",
-        "django__django-16454",
-        "django__django-16502",
-        "django__django-16560",
-        "django__django-16631",
-        "django__django-16642",
-        "django__django-16661",
-        "django__django-16667",
-        "django__django-16877",
-        "django__django-16938",
-        "django__django-16950",
-        "django__django-17084",
-    ]
-    
     asyncio.run(process_instances(instance_ids, anthropic_api_key, sidecar_binary_path)) 
