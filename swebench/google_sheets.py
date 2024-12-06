@@ -72,24 +72,19 @@ def add_column(spreadsheet_id, sheet_id, at_index=0):
 
 def main():
     LOG_SHEET_ID = "1W0gxh-NC9Sl01yrlTRPNGvyDQva3_lZPPPMQ2M8IP74"
-    RANGE_NAME = "A1:X254"
+    # RANGE_NAME = "A1:X254"
+    GRID_ID = "280623479" # the ID of the 'RUN' sheet
 
     try:
-        values = read_sheet_values(LOG_SHEET_ID, RANGE_NAME)
-        if not values:
-            print("No data found.")
-        else:
-            for row in values:
-                # Safely access row elements, if they exist
-                col1 = row[0] if len(row) > 0 else ""
-                col5 = row[4] if len(row) > 4 else ""
-                print(f"{col1}, {col5}")
-
         # Example of adding a column: You need the sheetId (not the name).
         # The sheet ID can be found by checking the Sheets UI or using metadata APIs.
         # For demonstration, we assume a sheetId of 0 (often the first sheet).
-        # add_column_response = add_column(LOG_SHEET_ID, sheet_id=0, at_index=1)
-        # print("Column added:", add_column_response)
+        run_column_index = 3
+
+        add_column_response = add_column(LOG_SHEET_ID, sheet_id=GRID_ID, at_index=run_column_index)
+        spreadsheetId = add_column_response["spreadsheetId"]
+        print(f"Column added to {GRID_ID} at index {run_column_index}")
+        print(f"Sheet url: https://docs.google.com/spreadsheets/d/{spreadsheetId}/edit#gid={GRID_ID}")
 
     except HttpError as err:
         print(err)
