@@ -1,17 +1,16 @@
 from argparse import ArgumentParser
 import subprocess
 import asyncio
-from datetime import datetime
 from time import time
 
-async def run_command_for_string(str_input, anthropic_api_key, sidecar_binary_path):
+async def run_command_for_instance(instance_id, anthropic_api_key, sidecar_binary_path, run_id):
     try:
         # First command: Docker pull - this is Django-specific
-        docker_name = str_input.replace('django__django-', 'django_1776_django-')
+        docker_name = instance_id.replace('django__django-', 'django_1776_django-')
         docker_image = f"swebench/sweb.eval.x86_64.{docker_name}:v1"
         pull_command = f"docker pull {docker_image}"
         
-        print(f"\nPulling Docker image for: {str_input}")
+        print(f"\nPulling Docker image for: {instance_id}")
         pull_process = await asyncio.create_subprocess_shell(
             pull_command,
             stdout=subprocess.PIPE,
@@ -22,24 +21,22 @@ async def run_command_for_string(str_input, anthropic_api_key, sidecar_binary_pa
         pull_stdout = pull_stdout.decode()
         pull_stderr = pull_stderr.decode()
 
-        current_timestamp = int(time())  # Returns seconds since epoch (Jan 1, 1970)
-        print(f"Current timestamp: {current_timestamp}")
-        output_log_path = f"output_{current_timestamp}.log"
+        output_log_path = f"output_{run_id}.log"
         
         # Second command: Run evaluation
         run_command = (
             f"python3 -u swebench/harness/run_evaluation.py " # -u is for unbuffered output
             f"--dataset_name dataset/verified/output.jsonl "
-            f"--instance_ids {str_input} "
+            f"--instance_ids {instance_id} "
             f"--sidecar_executable_path {sidecar_binary_path} "
             f"--anthropic_api_key {anthropic_api_key} " # don't forget to preserve the trailing space
-            f"--run_id {current_timestamp} "
+            f"--run_id {run_id} "
             f"--output_log_path {output_log_path} "
         )
 
         print(run_command)
         
-        print(f"Running evaluation for: {str_input}")
+        print(f"Running evaluation for: {instance_id}")
         run_process = await asyncio.create_subprocess_shell(
             run_command,
             stdout=asyncio.subprocess.PIPE,
@@ -66,28 +63,31 @@ async def run_command_for_string(str_input, anthropic_api_key, sidecar_binary_pa
         if pull_process.returncode != 0 or run_process.returncode != 0:
             raise Exception(f"Command failed with exit codes: pull={pull_process.returncode}, run={run_process.returncode}")
 
-        return {'success': True, 'string': str_input}
+        return {'success': True, 'string': instance_id}
     
     except Exception as error:
-        print(f"Error processing {str_input}:", error)
-        return {'success': False, 'string': str_input, 'error': str(error)}
+        print(f"Error processing {instance_id}:", error)
+        return {'success': False, 'string': instance_id, 'error': str(error)}
 
-async def process_strings(strings, anthropic_api_key, sidecar_binary_path):
+async def process_instances(instances, anthropic_api_key, sidecar_binary_path):
     print('Starting processing...')
     results = []
+
+    current_timestamp = int(time())  # will be run_id
+    print(f"Current timestamp: {current_timestamp}")
     
-    for str_input in strings:
-        result = await run_command_for_string(str_input, anthropic_api_key, sidecar_binary_path)
+    for instance_id in instances:
+        result = await run_command_for_instance(instance_id, anthropic_api_key, sidecar_binary_path, current_timestamp)
         results.append(result)
         
         # Log summary after each string is processed
         success = result['success']
         status = "✓ Success" if success else "✗ Failed"
-        print(f"{status}: {str_input}")
+        print(f"{status}: {instance_id}")
     
     # Print final summary
     successful = sum(1 for r in results if r['success'])
-    print(f'\nProcessing complete! {successful}/{len(strings)} successful')
+    print(f'\nProcessing complete! {successful}/{len(instances)} successful')
 
 # Example usage
 if __name__ == "__main__":
@@ -218,4 +218,4 @@ if __name__ == "__main__":
         "django__django-17084",
     ]
     
-    asyncio.run(process_strings(instance_ids, anthropic_api_key, sidecar_binary_path)) 
+    asyncio.run(process_instances(instance_ids, anthropic_api_key, sidecar_binary_path)) 
