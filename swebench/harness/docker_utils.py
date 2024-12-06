@@ -224,7 +224,31 @@ def exec_run_with_timeout_and_error_code_only_stdout(container: docker.models.co
             container.exec_run(f"kill -TERM {exec_pid}", detach=True)
         timed_out = True
     end_time = time.time()
-    final_output = f"Stdout:\n{exec_result_stdout.decode()}\nStderr:{exec_result_stderr.decode()}"
+    # Find the part of the string after <<<<<<<<<<<<<< START OF reproduce_error.py STDOUT
+    # Find the part of the string after <<<<<<<<<<<<<< START of reproduce_error.py STDERR
+    # Define markers for parsing output
+    stdout_marker = "<<<<<<<<<<<<<< START OF reproduce_error.py STDOUT"
+    stderr_marker = "<<<<<<<<<<<<<< START of reproduce_error.py STDERR"
+
+    # Decode the byte strings
+    stdout_str = exec_result_stdout.decode()
+    stderr_str = exec_result_stderr.decode()
+
+    # Find the part of the stdout after the specified marker, if present
+    # Find the part of the string after <<<<<<<<<<<<<< START OF reproduce_error.py STDOUT
+    if stdout_marker in stdout_str:
+        parts = stdout_str.split(stdout_marker, 1)
+        if len(parts) > 1:
+            stdout_str = parts[1].strip()
+
+    # Find the part of the stderr after the specified marker, if present
+    # Find the part of the string after <<<<<<<<<<<<<< START of reproduce_error.py STDERR
+    if stderr_marker in stderr_str:
+        parts = stderr_str.split(stderr_marker, 1)
+        if len(parts) > 1:
+            stderr_str = parts[1].strip()
+
+    final_output = f"Stdout:\n{stdout_str}\nStderr:\n{stderr_str}"
     return final_output, timed_out, end_time - start_time, exec_code
 
 def exec_run_with_timeout_and_error_code(container: docker.models.containers.Container, cmd, timeout: int|None=60):
