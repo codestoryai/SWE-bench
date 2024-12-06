@@ -269,6 +269,10 @@ def run_instance_for_test_path(
                      f"Check ({logger.log_file}) for more information.")
         logger.error(error_msg)
     finally:
+        # Cleanup the docker over here after the test run
+        container.exec_run("git clean -fdX", workdir="/testbed", user="root")
+        container.exec_run("git clean -fdx", workdir="/testbed", user="root")
+        container.exec_run("git add . && git stash", workdir="/testbed", user="root")
         pass
         # No need to pause anything as we are reusing the resources
         # during a single run
@@ -340,10 +344,10 @@ def run_terminal_command(
     container.exec_run("git clean -fdX", workdir="/testbed", user="root")
     container.exec_run("git clean -fdx", workdir="/testbed", user="root")
     container.exec_run("git add . && git stash", workdir="/testbed", user="root")
-    # container_git_diff = container.exec_run("git status", workdir="/testbed", user="root")
-    # print('git status container', container_git_diff.output.decode('utf-8'))
-    # container_git_diff = container.exec_run("git stash show -p", workdir="/testbed", user="root")
-    # print('git stash show -p inside container', container_git_diff.output.decode('utf-8'))
+    container_git_diff = container.exec_run("git status", workdir="/testbed", user="root")
+    print('git status container', container_git_diff.output.decode('utf-8'))
+    container_git_diff = container.exec_run("git stash show -p", workdir="/testbed", user="root")
+    print('git stash show -p inside container', container_git_diff.output.decode('utf-8'))
     
     
     # Now we get the patch file we are interested in
@@ -366,6 +370,7 @@ def run_terminal_command(
         workdir="/testbed",
         user="root",
     )
+    print("git apply patch output", val.output.decode('utf-8'))
     if val.exit_code != 0:
         print(f"Failed to apply patch to container, trying again...")
         
@@ -403,6 +408,11 @@ def run_terminal_command(
     terminal_output_path = log_dir / "terminal_output.txt"
     with open(terminal_output_path, "w") as f:
         f.write(terminal_output)
+    
+    # Reset the docker over here so its clean
+    container.exec_run("git clean -fdX", workdir="/testbed", user="root")
+    container.exec_run("git clean -fdx", workdir="/testbed", user="root")
+    container.exec_run("git add . && git stash", workdir="/testbed", user="root")
     return terminal_output
 
 
