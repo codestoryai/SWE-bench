@@ -48,6 +48,7 @@ async def sidecar_run(
             *command_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            limit=2**20  # for example, set a 1MB limit
         )
 
         async def read_stream(stream, name):
