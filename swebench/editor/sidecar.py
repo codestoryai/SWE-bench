@@ -44,11 +44,15 @@ async def sidecar_run(
 
         print(f"PAREA LINK:\n===\n{link}\n===")
 
+        # Copy the os.environment and set the force cli color to true
+        env = os.environ.copy()
+        env["CLICOLOR_FORCE"] = "1"
         process = await asyncio.create_subprocess_exec(
             *command_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            limit=2**20  # for example, set a 1MB limit
+            limit=2**20,  # for example, set a 1MB limit
+            env=env,
         )
 
         async def read_stream(stream, name):
