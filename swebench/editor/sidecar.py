@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import asyncio
+from typing import Optional
 from swebench.harness.constants import SWEbenchInstance
 from swebench.utils import get_parea_link
 
@@ -14,6 +15,7 @@ async def sidecar_run(
     run_id: str,
     anthropic_api_key: str,
     log_directory: str,
+    traj_search_space: Optional[int],
 ):
     with tempfile.TemporaryDirectory() as tmpdirname:
         tmp_path = tmpdirname
@@ -29,7 +31,7 @@ async def sidecar_run(
         with open(temp_file_path, 'w') as temp_file:
             json.dump(json_data, temp_file)
 
-        command_args.extend([
+        args = [
             "--input", temp_file_path,
             "--timeout", "1800",
             "--editor-url", endpoint_url,
@@ -37,7 +39,11 @@ async def sidecar_run(
             "--anthropic-api-key", anthropic_api_key,
             "--repo-name", instance["repo"],
             "--log-directory", log_directory,
-        ])
+        ]
+        if traj_search_space != None and traj_search_space != 0:
+            args.extend(["--single-traj-search", str(traj_search_space)])
+
+        command_args.extend(args)
         print("sidecar_binary_args", command_args)
 
         link = get_parea_link(run_id)

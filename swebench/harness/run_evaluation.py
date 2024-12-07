@@ -902,12 +902,17 @@ async def main_sidecar(
     anthropic_api_key: str,
     test_mode: bool,
     output_log_path: str,
+    traj_search_space: int,
     **kwargs,
 ):
     """
     Runs the sidecar over here and run the instance we are interested in
     This allows us to iterate against a complete flow
     """
+
+    # If there is no traj search space then its pain mcts
+    if traj_search_space == 0:
+        traj_search_space = None
     assert len(run_id) > 0, "Run ID must be provided and not empty"
     resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
 
@@ -989,6 +994,7 @@ async def main_sidecar(
             run_id=run_id,
             anthropic_api_key=anthropic_api_key,
             log_directory=log_directory,
+            traj_search_space=traj_search_space,
         )
 
         end_time = datetime.now()  # Record the end time
@@ -1243,6 +1249,7 @@ if __name__ == "__main__":
     parser.add_argument("--test_mode", type=bool, default=False, help="If we should run the test agent or the swebench agent, setting to true runs the test generation agent")
     parser.add_argument("--anthropic_api_key", type=str, help="Set the anthropic api key which we should be using")
     parser.add_argument("--output_log_path", type=str, help="Path to the output log file")
+    parser.add_argument("--traj_search_space", type=int, default=0, help="How many straight trajectoris we want to generate")
 
     args = parser.parse_args()
 
