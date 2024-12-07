@@ -1042,7 +1042,7 @@ async def main_sidecar(
                 file_content = variable.get("content")
                 # override the file content in tempdir over here
                 with open(file_path, "w") as f:
-                    f.wrte(file_content)
+                    f.write(file_content)
             
             # for variable in variables:
             #     initial_patch = variable.get("initial_patch")
