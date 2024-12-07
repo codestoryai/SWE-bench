@@ -1038,27 +1038,35 @@ async def main_sidecar(
             subprocess.check_output(["git", "stash"], cwd=git_tempdir)
             # Now apply the patch one by one to the files we are interested in
             for variable in variables:
-                initial_patch = variable.get("initial_patch")
                 file_path = variable.get("fs_file_path")
+                file_content = variable.get("content")
+                # override the file content in tempdir over here
+                with open(file_path, "w") as f:
+                    f.wrte(file_content)
+            
+            # for variable in variables:
+            #     initial_patch = variable.get("initial_patch")
+            #     file_content = variable.get("content")
+            #     file_path = variable.get("fs_file_path")
                 
-                # The patch logic might be wrong over here... need to check deeper
-                if initial_patch and file_path:
-                    try:
-                        print(f"applying patch for {file_path}")
-                        # Write the patch to a temporary file
-                        temp_patch_file = "temp_patch.diff"
-                        with open(temp_patch_file, "w") as patch_file:
-                            patch_file.write(initial_patch)
+            #     # The patch logic might be wrong over here... need to check deeper
+            #     if initial_patch and file_path:
+            #         try:
+            #             print(f"applying patch for {file_path}")
+            #             # Write the patch to a temporary file
+            #             temp_patch_file = "temp_patch.diff"
+            #             with open(temp_patch_file, "w") as patch_file:
+            #                 patch_file.write(initial_patch)
                         
-                        # Apply the patch to the file
-                        subprocess.check_output(["patch", file_path, temp_patch_file])
-                        print(f"Patch applied successfully to {file_path}")
-                    except subprocess.CalledProcessError as e:
-                        print(f"Failed to apply patch to {file_path}: {e.output.decode()}")
-                    finally:
-                        # Clean up the temporary patch file
-                        if os.path.exists(temp_patch_file):
-                            os.remove(temp_patch_file)
+            #             # Apply the patch to the file
+            #             subprocess.check_output(["patch", file_path, temp_patch_file])
+            #             print(f"Patch applied successfully to {file_path}")
+            #         except subprocess.CalledProcessError as e:
+            #             print(f"Failed to apply patch to {file_path}: {e.output.decode()}")
+            #         finally:
+            #             # Clean up the temporary patch file
+            #             if os.path.exists(temp_patch_file):
+            #                 os.remove(temp_patch_file)
             
             # Patch applied
             print(f"Finished updating repo for node: {completed_node}")
