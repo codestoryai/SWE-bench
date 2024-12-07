@@ -57,7 +57,7 @@ async def sidecar_run(
             *command_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            limit=2**20,  # for example, set a 1MB limit
+            limit=4**20,  # for example, set a 1MB limit
             env=env,
         )
 
