@@ -12,7 +12,7 @@ from functools import wraps
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
-def exponential_backoff(max_retries=10, base_delay=2, max_delay=64):
+def exponential_backoff(max_retries=100, base_delay=2, max_delay=128):
     """
     Decorator that implements exponential backoff for rate limit errors.
     
