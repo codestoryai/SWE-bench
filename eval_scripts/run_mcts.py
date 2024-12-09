@@ -41,7 +41,7 @@ async def run_command_for_instance(instance_id, anthropic_api_key, sidecar_binar
             f"--anthropic_api_key {anthropic_api_key} " # don't forget to preserve the trailing space
             f"--run_id {run_id} "
             f"--output_log_path {output_log_path} "
-            f"--traj_search_space 2" # allow for upto 2 trajectories to be generated, trying to exhaust the search space
+            f"--traj_search_space 1" # allow for upto 2 trajectories to be generated, trying to exhaust the search space
         )
 
         print(run_command)
