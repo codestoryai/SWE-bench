@@ -41,9 +41,9 @@ async def sidecar_run(
             "--log-directory", log_directory,
         ]
         if anthropic_api_key != None:
-            args.extend("--anthropic-api-key", anthropic_api_key)
+            args.extend(["--anthropic-api-key", anthropic_api_key])
         elif openrouter_api_key != None:
-            args.extend("--openrouter-api-key", openrouter_api_key)
+            args.extend(["--openrouter-api-key", openrouter_api_key])
         else:
             print("Failed to find a valid api key, bailing hard")
             import sys
