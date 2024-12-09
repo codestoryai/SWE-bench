@@ -14,6 +14,7 @@ async def sidecar_run(
     instance: SWEbenchInstance,
     run_id: str,
     anthropic_api_key: str,
+    openrouter_api_key: str,
     log_directory: str,
     traj_search_space: Optional[int],
 ):
@@ -36,10 +37,20 @@ async def sidecar_run(
             "--timeout", "1800",
             "--editor-url", endpoint_url,
             "--run-id", run_id,
-            "--anthropic-api-key", anthropic_api_key,
             "--repo-name", instance["repo"],
             "--log-directory", log_directory,
         ]
+        if anthropic_api_key != None:
+            args.extend("--anthropic-api-key", anthropic_api_key)
+        elif openrouter_api_key != None:
+            args.extend("--openrouter-api-key", openrouter_api_key)
+        else:
+            print("Failed to find a valid api key, bailing hard")
+            import sys
+            sys.exit(1)
+            return
+        
+        # Set the traj search space
         if traj_search_space != None and traj_search_space != 0:
             args.extend(["--single-traj-search", str(traj_search_space)])
 
