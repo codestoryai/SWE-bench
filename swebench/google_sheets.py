@@ -12,7 +12,7 @@ from functools import wraps
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
-def exponential_backoff(max_retries=5, base_delay=1, max_delay=64):
+def exponential_backoff(max_retries=10, base_delay=2, max_delay=64):
     """
     Decorator that implements exponential backoff for rate limit errors.
     
@@ -220,7 +220,15 @@ def update_instance_run_resolved_status(spreadsheet_id, sheet_id, sheet_name, co
         return
     
     set_cell_value(spreadsheet_id, sheet_name, row_index, column_index, status)
+    print(f"Updating instance {instance_id} with status {status} at row {row_index} and column {column_index}")
 
+def append_new_column(spreadsheet_id, sheet_id, sheet_name, column_name):
+    headers = get_header_row(spreadsheet_id, sheet_name)
+    at_index = len(headers)  # This will put it at the end
+    add_column(spreadsheet_id, sheet_id, at_index=at_index)
+    name_column(spreadsheet_id, sheet_name, at_index, column_name)
+    print(f"Added column {column_name} at index {at_index}")
+    return at_index
 
 def main():
     LOG_SHEET_ID = "1W0gxh-NC9Sl01yrlTRPNGvyDQva3_lZPPPMQ2M8IP74"
