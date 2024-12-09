@@ -173,6 +173,9 @@ notebooks/
 
 sidecar.*.json
 
+# swebench results json
+results*.json
+
 # google service account credentials
 credentials.json
 token.json
