@@ -6,8 +6,42 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+import time
+import random
+from functools import wraps
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+
+def exponential_backoff(max_retries=5, base_delay=1, max_delay=64):
+    """
+    Decorator that implements exponential backoff for rate limit errors.
+    
+    Args:
+        max_retries: Maximum number of retry attempts
+        base_delay: Initial delay in seconds
+        max_delay: Maximum delay between retries in seconds
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for n in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except HttpError as e:
+                    # Only retry on rate limit errors (429)
+                    if e.resp.status != 429:
+                        raise
+                    
+                    if n == max_retries - 1:  # Last attempt failed
+                        raise
+                    
+                    # Calculate delay with random jitter
+                    delay = min(((2 ** n) * base_delay + random.random()), max_delay)
+                    print(f"Rate limit hit. Retrying in {delay:.2f} seconds...")
+                    time.sleep(delay)
+            return func(*args, **kwargs)  # Final attempt
+        return wrapper
+    return decorator
 
 def get_sheets_service():
     creds = None
@@ -23,12 +57,14 @@ def get_sheets_service():
             token.write(creds.to_json())
     return build("sheets", "v4", credentials=creds)
 
+@exponential_backoff()
 def read_sheet_values(spreadsheet_id, range_name):
     service = get_sheets_service()
     sheet = service.spreadsheets()
     result = sheet.values().get(spreadsheetId=spreadsheet_id, range=range_name).execute()
     return result.get("values", [])
 
+@exponential_backoff()
 def add_column(spreadsheet_id, sheet_id, at_index=0):
     service = get_sheets_service()
     requests = [
@@ -58,6 +94,7 @@ def column_index_to_letter(index):
         index = index // 26 - 1
     return result
 
+@exponential_backoff()
 def set_cell_value(spreadsheet_id, sheet_name, row, col_index, value):
     service = get_sheets_service()
     col_letter = column_index_to_letter(col_index)
@@ -157,13 +194,27 @@ def update_instance_run_status(spreadsheet_id, sheet_id, sheet_name, run_id, ins
     set_cell_value(spreadsheet_id, sheet_name, row_index, run_details_col_index, json_data)
     print(f"Updated instance {instance_id} with status {status} and JSON metadata for run {run_id}.")
 
-def update_instance_run_resolved_status(spreadsheet_id, sheet_id, sheet_name, column_index, instance_id, status):
+def build_instance_id_mapping(spreadsheet_id, sheet_name):
+    """
+    Builds a mapping of instance IDs to row indices by reading column C once.
+    Returns a dictionary of {instance_id: row_index}.
+    """
+    values = read_sheet_values(spreadsheet_id, f"{sheet_name}!C:C")
+    return {row[0]: i for i, row in enumerate(values) if row}
+
+def update_instance_run_resolved_status(spreadsheet_id, sheet_id, sheet_name, column_index, instance_id, status, id_mapping=None):
     """
     Updates the sheet for a given column_index and instance_id:
     - Sets the column cell to `status` (e.g. True/False)
+    
+    Args:
+        id_mapping: Optional dict mapping instance IDs to row indices to avoid repeated reads
     """
-    # Find the instance row
-    row_index = find_row_by_instance_id(spreadsheet_id, sheet_name, instance_id)
+    if id_mapping is None:
+        row_index = find_row_by_instance_id(spreadsheet_id, sheet_name, instance_id)
+    else:
+        row_index = id_mapping.get(instance_id)
+        
     if row_index is None:
         print(f"Instance ID {instance_id} not found. Cannot update.")
         return
