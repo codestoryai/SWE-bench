@@ -994,6 +994,7 @@ async def main_sidecar(
             instance=dataset_part,
             run_id=run_id,
             anthropic_api_key=anthropic_api_key,
+            openrouter_api_key=openrouter_api_key,
             log_directory=log_directory,
             traj_search_space=traj_search_space,
         )
