@@ -50,16 +50,17 @@ async def run_command_for_instance(instance_id, anthropic_api_key, sidecar_binar
         run_process = await asyncio.create_subprocess_shell(
             run_command,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stderr=asyncio.subprocess.PIPE,
+            limit=4**20,  # for example, set a 1MB limit
         )
         
         # Replace communicate() with real-time logging
-        async def read_stream(stream):
-            while True:
-                line = await stream.readline()
-                if not line:
-                    break
-                print(line.decode().rstrip())
+        async def read_stream(stream, name):
+            async for line in stream:
+                decoded_line: str = line.decode()
+                if decoded_line == '\n':
+                    continue
+                print(f"PYTHON SCRIPT {name}: {decoded_line.rstrip()}")
         
         # Read both stdout and stderr concurrently
         await asyncio.gather(
