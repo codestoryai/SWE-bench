@@ -16,8 +16,35 @@ async def run_command_for_instance(instance_id, anthropic_api_key, openrouter_ap
     async with semaphore:
         try:
             # First command: Docker pull - this is Django-specific
-            docker_name = instance_id.replace('django__django-', 'django_1776_django-')
+            if instance_id.startswith('django'):
+                docker_name = instance_id.replace('django__django-', 'django_1776_django-')
+            if instance_id.startswith('astropy'):
+                docker_name = instance_id.replace('astropy__astropy-', 'astropy_1776_astropy-')
+            if instance_id.startswith('matplotlib'):
+                docker_name = instance_id.replace('matplotlib__matplotlib-', 'matplotlib_1776_matplotlib-')
+            if instance_id.startswith('mwaskom'):
+                docker_name = instance_id.replace('mwaskom__seaborn-', 'mwaskom_1776_seaborn-')
+            if instance_id.startswith('pallets__flask'):
+                docker_name = instance_id.replace('pallets__flask-', 'pallets_1776_flask-')
+            if instance_id.startswith('pydata__xarray-'):
+                docker_name = instance_id.replace('pydata__xarray-', 'pydata_1776_xarray-')
+            if instance_id.startswith('pylint-dev__pylint'):
+                docker_name = instance_id.replace('pylint-dev__pylint-', 'pylint-dev_1776_pylint-')
+            if instance_id.startswith('sympy'):
+                docker_name = instance_id.replace('sympy__sympy-', 'sympy_1776_sympy-')
+            if instance_id.startswith('scikit-learn__scikit-learn-'):
+                docker_name = instance_id.replace('scikit-learn__scikit-learn-', 'scikit-learn_1776_scikit-learn-')
+            if instance_id.startswith('psf__requests-'):
+                docker_name = instance_id.replace('psf__requests-', 'psf_1776_requests-')
+            if instance_id.startswith('pydata__xarray-'):
+                docker_name = instance_id.replace('pydata__xarray-', 'pydata_1776_xarray-')
+            if instance_id.startswith('sphinx-doc__sphinx-'):
+                docker_name = instance_id.replace('sphinx-doc__sphinx-', 'sphinx-doc_1776_sphinx-')
+            if instance_id.startswith('pallets__flask'):
+                docker_name = instance_id.replace('pallets__flask-', 'pallets_1776_flask-')
+            
             docker_image = f"swebench/sweb.eval.x86_64.{docker_name}:v1"
+            print(f"\nPulling Docker image: {docker_image}")
             pull_command = f"docker pull {docker_image}"
             
             print(f"\nPulling Docker image for: {instance_id}")
