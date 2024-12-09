@@ -98,7 +98,7 @@ async def process_all_instances(instances, anthropic_api_key, sidecar_binary_pat
     logger.info(json.dumps({"event": "start_processing", "total_instances": len(instances)}))
 
     run_id = int(time())  # Could also be a UUID or another unique ID
-    batch_size = 50
+    batch_size = 20
     total = len(instances)
     completed = 0
 
