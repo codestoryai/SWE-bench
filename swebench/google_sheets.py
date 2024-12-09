@@ -157,6 +157,20 @@ def update_instance_run_status(spreadsheet_id, sheet_id, sheet_name, run_id, ins
     set_cell_value(spreadsheet_id, sheet_name, row_index, run_details_col_index, json_data)
     print(f"Updated instance {instance_id} with status {status} and JSON metadata for run {run_id}.")
 
+def update_instance_run_resolved_status(spreadsheet_id, sheet_id, sheet_name, column_index, instance_id, status):
+    """
+    Updates the sheet for a given column_index and instance_id:
+    - Sets the column cell to `status` (e.g. True/False)
+    """
+    # Find the instance row
+    row_index = find_row_by_instance_id(spreadsheet_id, sheet_name, instance_id)
+    if row_index is None:
+        print(f"Instance ID {instance_id} not found. Cannot update.")
+        return
+    
+    set_cell_value(spreadsheet_id, sheet_name, row_index, column_index, status)
+
+
 def main():
     LOG_SHEET_ID = "1W0gxh-NC9Sl01yrlTRPNGvyDQva3_lZPPPMQ2M8IP74"
     SHEET_ID = 280623479
