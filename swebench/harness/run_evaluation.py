@@ -156,6 +156,9 @@ def run_instance_for_test_path(
         container.exec_run("git clean -fdX", workdir="/testbed", user="root")
         container.exec_run("git clean -fdx", workdir="/testbed", user="root")
         container.exec_run("git add . && git stash", workdir="/testbed", user="root")
+        # Run git reset to clean up the container repo properly
+        container.exec_run(f"git reset --hard {instance['base_commit']}", workdir="/testbed", user="root")
+
         copy_to_container(container, patch_file, Path("/tmp/patch.diff"))
 
         # Attempt to apply patch to container
@@ -344,6 +347,8 @@ def run_terminal_command(
     container.exec_run("git clean -fdX", workdir="/testbed", user="root")
     container.exec_run("git clean -fdx", workdir="/testbed", user="root")
     container.exec_run("git add . && git stash", workdir="/testbed", user="root")
+    # Run git reset to clean up the container repo properly
+    container.exec_run(f"git reset --hard {instance['base_commit']}", workdir="/testbed", user="root")
     container_git_diff = container.exec_run("git status", workdir="/testbed", user="root")
     print('git status container', container_git_diff.output.decode('utf-8'))
     container_git_diff = container.exec_run("git stash show -p", workdir="/testbed", user="root")
@@ -413,6 +418,8 @@ def run_terminal_command(
     container.exec_run("git clean -fdX", workdir="/testbed", user="root")
     container.exec_run("git clean -fdx", workdir="/testbed", user="root")
     container.exec_run("git add . && git stash", workdir="/testbed", user="root")
+    # Run git reset to clean up the container repo properly
+    container.exec_run(f"git reset --hard {instance['base_commit']}", workdir="/testbed", user="root")
     return terminal_output
 
 
@@ -893,14 +900,20 @@ async def main_sidecar(
     run_id: str,
     timeout: int,
     anthropic_api_key: str,
+    openrouter_api_key: str,
     test_mode: bool,
     output_log_path: str,
+    traj_search_space: int,
     **kwargs,
 ):
     """
     Runs the sidecar over here and run the instance we are interested in
     This allows us to iterate against a complete flow
     """
+
+    # If there is no traj search space then its pain mcts
+    if traj_search_space == 0:
+        traj_search_space = None
     assert len(run_id) > 0, "Run ID must be provided and not empty"
     resource.setrlimit(resource.RLIMIT_NOFILE, (4096, 4096))
 
@@ -981,7 +994,9 @@ async def main_sidecar(
             instance=dataset_part,
             run_id=run_id,
             anthropic_api_key=anthropic_api_key,
+            openrouter_api_key=openrouter_api_key,
             log_directory=log_directory,
+            traj_search_space=traj_search_space,
         )
 
         end_time = datetime.now()  # Record the end time
@@ -1031,27 +1046,35 @@ async def main_sidecar(
             subprocess.check_output(["git", "stash"], cwd=git_tempdir)
             # Now apply the patch one by one to the files we are interested in
             for variable in variables:
-                initial_patch = variable.get("initial_patch")
                 file_path = variable.get("fs_file_path")
+                file_content = variable.get("content")
+                # override the file content in tempdir over here
+                with open(file_path, "w") as f:
+                    f.write(file_content)
+            
+            # for variable in variables:
+            #     initial_patch = variable.get("initial_patch")
+            #     file_content = variable.get("content")
+            #     file_path = variable.get("fs_file_path")
                 
-                # The patch logic might be wrong over here... need to check deeper
-                if initial_patch and file_path:
-                    try:
-                        print(f"applying patch for {file_path}")
-                        # Write the patch to a temporary file
-                        temp_patch_file = "temp_patch.diff"
-                        with open(temp_patch_file, "w") as patch_file:
-                            patch_file.write(initial_patch)
+            #     # The patch logic might be wrong over here... need to check deeper
+            #     if initial_patch and file_path:
+            #         try:
+            #             print(f"applying patch for {file_path}")
+            #             # Write the patch to a temporary file
+            #             temp_patch_file = "temp_patch.diff"
+            #             with open(temp_patch_file, "w") as patch_file:
+            #                 patch_file.write(initial_patch)
                         
-                        # Apply the patch to the file
-                        subprocess.check_output(["patch", file_path, temp_patch_file])
-                        print(f"Patch applied successfully to {file_path}")
-                    except subprocess.CalledProcessError as e:
-                        print(f"Failed to apply patch to {file_path}: {e.output.decode()}")
-                    finally:
-                        # Clean up the temporary patch file
-                        if os.path.exists(temp_patch_file):
-                            os.remove(temp_patch_file)
+            #             # Apply the patch to the file
+            #             subprocess.check_output(["patch", file_path, temp_patch_file])
+            #             print(f"Patch applied successfully to {file_path}")
+            #         except subprocess.CalledProcessError as e:
+            #             print(f"Failed to apply patch to {file_path}: {e.output.decode()}")
+            #         finally:
+            #             # Clean up the temporary patch file
+            #             if os.path.exists(temp_patch_file):
+            #                 os.remove(temp_patch_file)
             
             # Patch applied
             print(f"Finished updating repo for node: {completed_node}")
@@ -1226,8 +1249,10 @@ if __name__ == "__main__":
     parser.add_argument("--run_id", type=str, default=str(int(time.time())), help="Run ID - identifies the run")
     parser.add_argument("--sidecar_executable_path", type=str, help="Path to the sidecar binary")
     parser.add_argument("--test_mode", type=bool, default=False, help="If we should run the test agent or the swebench agent, setting to true runs the test generation agent")
-    parser.add_argument("--anthropic_api_key", type=str, help="Set the anthropic api key which we should be using")
+    parser.add_argument("--anthropic_api_key", type=str, default=None, help="Set the anthropic api key which we should be using")
+    parser.add_argument("--openrouter_api_key", type=str, default=None, help="Set the open router api key which we should be using")
     parser.add_argument("--output_log_path", type=str, help="Path to the output log file")
+    parser.add_argument("--traj_search_space", type=int, default=0, help="How many straight trajectoris we want to generate")
 
     args = parser.parse_args()
 

@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import asyncio
+from typing import Optional
 from swebench.harness.constants import SWEbenchInstance
 from swebench.utils import get_parea_link
 
@@ -13,7 +14,9 @@ async def sidecar_run(
     instance: SWEbenchInstance,
     run_id: str,
     anthropic_api_key: str,
+    openrouter_api_key: str,
     log_directory: str,
+    traj_search_space: Optional[int],
 ):
     with tempfile.TemporaryDirectory() as tmpdirname:
         tmp_path = tmpdirname
@@ -29,26 +32,44 @@ async def sidecar_run(
         with open(temp_file_path, 'w') as temp_file:
             json.dump(json_data, temp_file)
 
-        command_args.extend([
+        args = [
             "--input", temp_file_path,
             "--timeout", "1800",
             "--editor-url", endpoint_url,
             "--run-id", run_id,
-            "--anthropic-api-key", anthropic_api_key,
             "--repo-name", instance["repo"],
             "--log-directory", log_directory,
-        ])
+        ]
+        if anthropic_api_key != None:
+            args.extend(["--anthropic-api-key", anthropic_api_key])
+        elif openrouter_api_key != None:
+            args.extend(["--openrouter-api-key", openrouter_api_key])
+        else:
+            print("Failed to find a valid api key, bailing hard")
+            import sys
+            sys.exit(1)
+            return
+        
+        # Set the traj search space
+        if traj_search_space != None and traj_search_space != 0:
+            args.extend(["--single-traj-search", str(traj_search_space)])
+
+        command_args.extend(args)
         print("sidecar_binary_args", command_args)
 
         link = get_parea_link(run_id)
 
         print(f"PAREA LINK:\n===\n{link}\n===")
 
+        # Copy the os.environment and set the force cli color to true
+        env = os.environ.copy()
+        env["CLICOLOR_FORCE"] = "1"
         process = await asyncio.create_subprocess_exec(
             *command_args,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
-            limit=2**20  # for example, set a 1MB limit
+            limit=4**20,  # for example, set a 1MB limit
+            env=env,
         )
 
         async def read_stream(stream, name):
