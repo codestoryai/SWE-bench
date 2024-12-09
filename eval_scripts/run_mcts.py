@@ -95,7 +95,8 @@ async def process_batch(batch, anthropic_api_key, openrouter_api_key, sidecar_bi
     iteration_index = 0
     tasks = []
     for instance_id in batch:
-        if iteration_index % 2 == 0:
+        # Make it use open router once we have tool use support in open-router
+        if False:
             tasks.append(run_command_for_instance(instance_id=instance_id, anthropic_api_key=None, openrouter_api_key=openrouter_api_key, sidecar_binary_path=sidecar_binary_path, run_id=run_id))
         else:
             tasks.append(run_command_for_instance(instance_id=instance_id, anthropic_api_key=anthropic_api_key, openrouter_api_key=None, sidecar_binary_path=sidecar_binary_path, run_id=run_id))
@@ -110,7 +111,7 @@ async def process_all_instances(instances, anthropic_api_key, openrouter_api_key
     logger.info(json.dumps({"event": "start_processing", "total_instances": len(instances)}))
 
     run_id = int(time())  # Could also be a UUID or another unique ID
-    batch_size = 20
+    batch_size = 15
     total = len(instances)
     completed = 0
 
