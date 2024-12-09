@@ -12,7 +12,7 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter('%(message)s'))
 logger.addHandler(handler)
 
-async def run_command_for_instance(instance_id, anthropic_api_key, sidecar_binary_path, run_id):
+async def run_command_for_instance(instance_id, anthropic_api_key, openrouter_api_key, sidecar_binary_path, run_id):
     try:
         # First command: Docker pull - this is Django-specific
         docker_name = instance_id.replace('django__django-', 'django_1776_django-')
@@ -31,6 +31,12 @@ async def run_command_for_instance(instance_id, anthropic_api_key, sidecar_binar
         pull_stderr = pull_stderr.decode()
 
         output_log_path = f"output_{run_id}.log"
+
+        key_command = ""
+        if anthropic_api_key is not None:
+            key_command = f"--anthropic_api_key {anthropic_api_key} " # don't forget to preserve the trailing space
+        elif openrouter_api_key is not None:
+            key_command = f"--openrouter_api_key {openrouter_api_key} " # don't forget to preserve the trailing space
         
         # Second command: Run evaluation
         run_command = (
@@ -38,7 +44,7 @@ async def run_command_for_instance(instance_id, anthropic_api_key, sidecar_binar
             f"--dataset_name dataset/verified/output.jsonl "
             f"--instance_ids {instance_id} "
             f"--sidecar_executable_path {sidecar_binary_path} "
-            f"--anthropic_api_key {anthropic_api_key} " # don't forget to preserve the trailing space
+            f"{key_command}"
             f"--run_id {run_id} "
             f"--output_log_path {output_log_path} "
             f"--traj_search_space 1" # allow for upto 2 trajectories to be generated, trying to exhaust the search space
@@ -81,20 +87,26 @@ async def run_command_for_instance(instance_id, anthropic_api_key, sidecar_binar
         return {'success': False, 'string': instance_id, 'error': str(error)}
 
 
-async def process_batch(batch, anthropic_api_key, sidecar_binary_path, run_id, start_index):
+async def process_batch(batch, anthropic_api_key, openrouter_api_key, sidecar_binary_path, run_id, start_index):
     """
     Process a single batch of instance_ids concurrently.
     `start_index` is the index of the first instance in the overall sequence, for logging.
     """
-    tasks = [
-        run_command_for_instance(instance_id, anthropic_api_key, sidecar_binary_path, run_id)
-        for instance_id in batch
-    ]
+    iteration_index = 0
+    tasks = []
+    for instance_id in batch:
+        if iteration_index % 2 == 0:
+            tasks.append(run_command_for_instance(instance_id=instance_id, anthropic_api_key=None, openrouter_api_key=openrouter_api_key, sidecar_binary_path=sidecar_binary_path, run_id=run_id))
+        else:
+            tasks.append(run_command_for_instance(instance_id=instance_id, anthropic_api_key=anthropic_api_key, openrouter_api_key=None, sidecar_binary_path=sidecar_binary_path, run_id=run_id))
+        iteration_index = iteration_index + 1
+
+    # asyncio.gather all the commands
     results = await asyncio.gather(*tasks, return_exceptions=False)
 
     return results
 
-async def process_all_instances(instances, anthropic_api_key, sidecar_binary_path):
+async def process_all_instances(instances, anthropic_api_key, openrouter_api_key, sidecar_binary_path):
     logger.info(json.dumps({"event": "start_processing", "total_instances": len(instances)}))
 
     run_id = int(time())  # Could also be a UUID or another unique ID
@@ -115,7 +127,7 @@ async def process_all_instances(instances, anthropic_api_key, sidecar_binary_pat
         }))
 
         # Process this batch concurrently
-        results = await process_batch(batch, anthropic_api_key, sidecar_binary_path, run_id, start)
+        results = await process_batch(batch, anthropic_api_key, openrouter_api_key, sidecar_binary_path, run_id, start)
 
         # Count how many succeeded
         batch_success = sum(r["success"] for r in results)
@@ -145,6 +157,7 @@ async def process_all_instances(instances, anthropic_api_key, sidecar_binary_pat
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--anthropic_api_key", type=str, required=True, help="Anthropic API key")
+    parser.add_argument("--openrouter_api_key", type=str, required=True, help="Open Router API key")
     parser.add_argument("--sidecar_binary_path", type=str, required=True, help="Sidecar binary path")
     parser.add_argument("--instances_file", type=str, required=True, help="Path to file containing instance IDs")
     args = parser.parse_args()
@@ -157,4 +170,4 @@ if __name__ == "__main__":
         instance_ids = [line.strip() for line in f if line.strip()]
 
     # Run the main process
-    asyncio.run(process_all_instances(instance_ids, args.anthropic_api_key, args.sidecar_binary_path))
+    asyncio.run(process_all_instances(instance_ids, args.anthropic_api_key, args.openrouter_api_key, args.sidecar_binary_path))
