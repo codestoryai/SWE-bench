@@ -5,7 +5,7 @@ from typing import Tuple
 from swebench.editor.webserver import setup_webserver
 import socket
 
-def find_free_port(start_port: int = 6897) -> int:
+def find_free_port(start_port: int = 5000) -> int:
     """Find the first available port starting from start_port."""
     port = start_port
     while True:

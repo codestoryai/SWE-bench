@@ -1248,8 +1248,8 @@ if __name__ == "__main__":
     parser.add_argument("--run_id", type=str, default=str(int(time.time())), help="Run ID - identifies the run")
     parser.add_argument("--sidecar_executable_path", type=str, help="Path to the sidecar binary")
     parser.add_argument("--test_mode", type=bool, default=False, help="If we should run the test agent or the swebench agent, setting to true runs the test generation agent")
-    parser.add_argument("--anthropic_api_key", type=str, help="Set the anthropic api key which we should be using")
-    parser.add_argument("--openrouter_api_key", type=str, help="Set the open router api key which we should be using")
+    parser.add_argument("--anthropic_api_key", type=str, default=None, help="Set the anthropic api key which we should be using")
+    parser.add_argument("--openrouter_api_key", type=str, default=None, help="Set the open router api key which we should be using")
     parser.add_argument("--output_log_path", type=str, help="Path to the output log file")
     parser.add_argument("--traj_search_space", type=int, default=0, help="How many straight trajectoris we want to generate")
 
