@@ -64,8 +64,8 @@ async def run_command_for_instance(instance_id, anthropic_api_key, sidecar_binar
         
         # Read both stdout and stderr concurrently
         await asyncio.gather(
-            read_stream(run_process.stdout),
-            read_stream(run_process.stderr)
+            read_stream(run_process.stdout, "STDOUT"),
+            read_stream(run_process.stderr, "STDERR")
         )
         
         # Wait for process to complete
