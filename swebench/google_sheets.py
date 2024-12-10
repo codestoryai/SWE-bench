@@ -101,6 +101,32 @@ def get_column_values(spreadsheet_id, sheet_name, column_name):
             
     return column_values
 
+def get_rows_as_dicts(spreadsheet_id, sheet_name, column_names):
+    values = read_sheet_values(spreadsheet_id, sheet_name)
+    if not values:
+        return []
+
+    headers = values[0]
+    # Map each requested column to its index if found
+    column_indices = {}
+    for col_name in column_names:
+        try:
+            column_indices[col_name] = headers.index(col_name)
+        except ValueError:
+            print(f"Column {col_name} not found.")
+            # Decide if you want to continue or fail early here.
+    
+    # Create a list of row-dicts
+    rows = []
+    for row_values in values[1:]:
+        row_dict = {}
+        for col_name, idx in column_indices.items():
+            # If the row is shorter than expected, use an empty string or None
+            cell_value = row_values[idx] if len(row_values) > idx else ""
+            row_dict[col_name] = cell_value
+        rows.append(row_dict)
+    
+    return rows
 
 @exponential_backoff()
 def add_column(spreadsheet_id, sheet_id, at_index=0):
