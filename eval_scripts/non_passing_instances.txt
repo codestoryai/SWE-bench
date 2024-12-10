@@ -1,7 +1,6 @@
 django__django-17029
 matplotlib__matplotlib-26113
 django__django-15572
-django__django-15814
 django__django-16100
 django__django-17087
 matplotlib__matplotlib-13989
@@ -17,7 +16,6 @@ pytest-dev__pytest-7571
 pytest-dev__pytest-7982
 pytest-dev__pytest-8399
 scikit-learn__scikit-learn-11578
-scikit-learn__scikit-learn-13135
 scikit-learn__scikit-learn-13142
 scikit-learn__scikit-learn-13328
 scikit-learn__scikit-learn-13439
@@ -115,7 +113,6 @@ django__django-16032
 pydata__xarray-4094
 pydata__xarray-4695
 pytest-dev__pytest-7236
-scikit-learn__scikit-learn-13124
 scikit-learn__scikit-learn-14983
 sphinx-doc__sphinx-7440
 sphinx-doc__sphinx-8035
@@ -189,7 +186,6 @@ sympy__sympy-13877
 sympy__sympy-18698
 django__django-11299
 pylint-dev__pylint-4970
-scikit-learn__scikit-learn-12973
 scikit-learn__scikit-learn-25747
 sympy__sympy-18211
 astropy__astropy-13033
