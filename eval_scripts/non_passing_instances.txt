@@ -1,7 +1,4 @@
-django__django-11551
-django__django-15368
 django__django-15467
-django__django-15499
 django__django-15561
 django__django-15851
 django__django-16899
@@ -15,8 +12,6 @@ matplotlib__matplotlib-25287
 matplotlib__matplotlib-26113
 pallets__flask-5014
 psf__requests-1766
-django__django-15103
-django__django-15128
 django__django-15382
 django__django-15572
 django__django-15741
@@ -96,7 +91,6 @@ sympy__sympy-22714
 sympy__sympy-22914
 sympy__sympy-23950
 sympy__sympy-24066
-sympy__sympy-24213
 sympy__sympy-24443
 astropy__astropy-14508
 astropy__astropy-14539
@@ -194,8 +188,6 @@ django__django-13297
 django__django-13346
 django__django-13810
 django__django-14311
-django__django-14500
-django__django-14771
 django__django-15375
 django__django-15916
 django__django-16642
@@ -265,7 +257,6 @@ django__django-14155
 django__django-14170
 django__django-14315
 django__django-14351
-django__django-14376
 django__django-14404
 django__django-14534
 django__django-14631
