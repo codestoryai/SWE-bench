@@ -1,6 +1,3 @@
-django__django-17029
-matplotlib__matplotlib-25122
-matplotlib__matplotlib-25287
 matplotlib__matplotlib-26113
 pallets__flask-5014
 psf__requests-1766
@@ -132,7 +129,6 @@ django__django-13112
 django__django-14122
 django__django-15161
 django__django-16032
-matplotlib__matplotlib-25332
 pydata__xarray-4094
 pydata__xarray-4695
 pytest-dev__pytest-7236
