@@ -120,8 +120,8 @@ async def process_all_instances(instances, anthropic_api_key, openrouter_api_key
     success_count = 0
     failure_count = 0
 
-    # Set the maximum concurrency to 10
-    concurrency_limit = 10
+    # Set the maximum concurrency to 7
+    concurrency_limit = 7
     semaphore = asyncio.Semaphore(concurrency_limit)
     
     # Create all tasks upfront
