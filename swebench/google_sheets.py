@@ -65,6 +65,44 @@ def read_sheet_values(spreadsheet_id, range_name):
     return result.get("values", [])
 
 @exponential_backoff()
+def get_column_values(spreadsheet_id, sheet_name, column_name):
+    """
+    Get all values in a column identified by its header name.
+    
+    Args:
+        spreadsheet_id: ID of the Google Sheet
+        sheet_name: Name of the sheet
+        column_name: Name of the column header to find
+        
+    Returns:
+        List of values in the column (excluding header), or empty list if column not found
+    """
+    # Read all values from sheet
+    values = read_sheet_values(spreadsheet_id, sheet_name)
+    if not values:
+        return []
+        
+    # Find column index by matching header name
+    headers = values[0]
+    try:
+        col_index = headers.index(column_name)
+    except ValueError:
+        print(f"Column {column_name} not found in sheet {sheet_name}")
+        return []  # Column not found
+        
+    # Extract values from that column (excluding header row)
+    column_values = []
+    for row in values[1:]:
+        # Handle rows that might be shorter than header row
+        if len(row) > col_index:
+            column_values.append(row[col_index])
+        else:
+            column_values.append("")
+            
+    return column_values
+
+
+@exponential_backoff()
 def add_column(spreadsheet_id, sheet_id, at_index=0):
     service = get_sheets_service()
     requests = [
