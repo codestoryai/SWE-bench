@@ -1,5 +1,3 @@
-django__django-15561
-django__django-16899
 django__django-17029
 matplotlib__matplotlib-22719
 matplotlib__matplotlib-23314
@@ -14,9 +12,7 @@ django__django-15572
 django__django-15814
 django__django-16082
 django__django-16100
-django__django-16454
 django__django-17087
-django__django-7530
 matplotlib__matplotlib-13989
 matplotlib__matplotlib-24026
 matplotlib__matplotlib-24149
