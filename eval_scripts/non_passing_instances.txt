@@ -1,5 +1,4 @@
 django__django-15561
-django__django-15851
 django__django-16899
 django__django-17029
 matplotlib__matplotlib-22719
@@ -12,10 +11,7 @@ matplotlib__matplotlib-26113
 pallets__flask-5014
 psf__requests-1766
 django__django-15572
-django__django-15741
 django__django-15814
-django__django-15863
-django__django-15930
 django__django-16082
 django__django-16100
 django__django-16454
