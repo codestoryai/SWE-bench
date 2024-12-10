@@ -172,7 +172,7 @@ async def process_all_instances(instances, anthropic_api_key, openrouter_api_key
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--anthropic_api_key", type=str, required=True, help="Anthropic API key")
-    parser.add_argument("--openrouter_api_key", type=str, required=True, help="Open Router API key")
+    parser.add_argument("--openrouter_api_key", type=str, required=False, help="Open Router API key")
     parser.add_argument("--sidecar_binary_path", type=str, required=True, help="Sidecar binary path")
     parser.add_argument("--instances_file", type=str, required=True, help="Path to file containing instance IDs")
     args = parser.parse_args()
