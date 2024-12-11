@@ -1,4 +1,3 @@
-django__django-15022
 django__django-15572
 matplotlib__matplotlib-26113
 django__django-13028
