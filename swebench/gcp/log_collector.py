@@ -20,11 +20,10 @@ def find_top_level_mcts_file(top_level_files, run_id):
 def extract_sidecar_required_files(sidecar_structure):
     """
     From sidecar_structure, extract the required files:
-    patch.diff, report.json, eval.sh, test_output.txt, run_instance.log
-    Assume they are directly under sidecar_instance_path in the '_files' key.
+    report.json, eval.sh, test_output.txt, run_instance.log
+    (We no longer look for patch.diff here as it should be next to the mcts file.)
     """
     required_files = {
-        "patch.diff": None,
         "report.json": None,
         "eval.sh": None,
         "test_output.txt": None,
@@ -42,8 +41,22 @@ def extract_sidecar_required_files(sidecar_structure):
     
     return required_files
 
+def find_patch_diff_for_mcts(mcts_file):
+    """
+    Given the mcts file path, find 'patch.diff' in the same directory.
+    If not found, return None.
+    """
+    if mcts_file is None:
+        return None
+    mcts_dir = os.path.dirname(mcts_file)
+    # Check if patch.diff exists in mcts_dir
+    patch_diff_path = os.path.join(mcts_dir, "patch.diff")
+    if os.path.isfile(patch_diff_path):
+        return patch_diff_path
+    return None
+
 def build_files_map(base_path):
-    # The new structure we want:
+    # The structure we want:
     # {
     #   instance_id: {
     #       run_id: {
@@ -80,7 +93,7 @@ def build_files_map(base_path):
         
         run_id = os.path.basename(run_id_dir)
         
-        # Identify top-level instance_id directories (excluding sidecar)
+        # Identify top-level instance_ids (excluding sidecar)
         top_level_instance_ids = [
             d for d in os.listdir(run_id_dir)
             if d != "sidecar" and os.path.isdir(os.path.join(run_id_dir, d))
@@ -110,9 +123,12 @@ def build_files_map(base_path):
                     # Files directly under sidecar/instance_id
                     sidecar_structure.setdefault("_files", []).append(sub_path)
             
-            # Extract the required files
+            # Extract the required sidecar files (excluding patch.diff)
             mcts_file = find_top_level_mcts_file(top_level_files, run_id)
             sidecar_required_files = extract_sidecar_required_files(sidecar_structure)
+            
+            # Find patch.diff in the same directory as mcts_file
+            patch_diff_file = find_patch_diff_for_mcts(mcts_file)
             
             # Ensure this instance_id key exists in files_map
             if instance_id not in files_map:
@@ -124,7 +140,7 @@ def build_files_map(base_path):
                 "sidecar": sidecar_structure,
                 "trajs": {
                     "mcts_file": mcts_file,
-                    "patch.diff": sidecar_required_files["patch.diff"],
+                    "patch.diff": patch_diff_file,
                     "report.json": sidecar_required_files["report.json"],
                     "eval.sh": sidecar_required_files["eval.sh"],
                     "test_output.txt": sidecar_required_files["test_output.txt"],
