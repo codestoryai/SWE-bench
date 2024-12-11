@@ -42,6 +42,8 @@ async def run_command_for_instance(instance_id, anthropic_api_key, openrouter_ap
                 docker_name = instance_id.replace('sphinx-doc__sphinx-', 'sphinx-doc_1776_sphinx-')
             if instance_id.startswith('pallets__flask'):
                 docker_name = instance_id.replace('pallets__flask-', 'pallets_1776_flask-')
+            if instance_id.startswith('pytest-dev__pytest-'):
+                docker_name = instance_id.replace('pytest-dev__pytest-', 'pytest-dev_1776_pytest-')
             
             docker_image = f"swebench/sweb.eval.x86_64.{docker_name}:v1"
             print(f"\nPulling Docker image: {docker_image}")
