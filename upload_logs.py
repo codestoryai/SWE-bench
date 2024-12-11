@@ -5,7 +5,7 @@ from swebench.gcp.log_collector import build_files_map
 
 bucket_name = "swebench_logs"
 
-root_dir = "/Users/zi/codestory/SWE-bench/logs/run_evaluation"
+root_dir = "/Users/skcd/scratch/SWE-bench/logs/run_evaluation"
 
 result = build_files_map(root_dir)
 json_result = json.dumps(result, indent=4)

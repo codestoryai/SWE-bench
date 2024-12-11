@@ -77,6 +77,7 @@ django__django-16612
 django__django-16662
 django__django-16801
 django__django-16901
+django__django-17029
 django__django-9296
 matplotlib__matplotlib-22719
 matplotlib__matplotlib-23314
@@ -132,6 +133,7 @@ matplotlib__matplotlib-13989
 matplotlib__matplotlib-24026
 matplotlib__matplotlib-24149
 matplotlib__matplotlib-24570
+matplotlib__matplotlib-26342
 psf__requests-1921
 pydata__xarray-3151
 pydata__xarray-3677
@@ -151,6 +153,7 @@ pytest-dev__pytest-8399
 scikit-learn__scikit-learn-10297
 scikit-learn__scikit-learn-10844
 scikit-learn__scikit-learn-11310
+scikit-learn__scikit-learn-11578
 scikit-learn__scikit-learn-12585
 scikit-learn__scikit-learn-13135
 scikit-learn__scikit-learn-13142
@@ -236,6 +239,7 @@ sympy__sympy-23824
 sympy__sympy-24661
 django__django-14580
 django__django-14999
+matplotlib__matplotlib-22865
 matplotlib__matplotlib-25775
 psf__requests-5414
 sphinx-doc__sphinx-10673
@@ -253,13 +257,16 @@ django__django-14122
 django__django-15037
 django__django-15161
 django__django-15525
+django__django-16032
 matplotlib__matplotlib-25332
 pytest-dev__pytest-7236
 scikit-learn__scikit-learn-13124
 scikit-learn__scikit-learn-14983
+sphinx-doc__sphinx-7440
 sphinx-doc__sphinx-8459
 sphinx-doc__sphinx-8593
 sympy__sympy-14531
+sympy__sympy-23534
 django__django-11964
 django__django-16661
 matplotlib__matplotlib-25311
@@ -287,6 +294,7 @@ sphinx-doc__sphinx-7454
 sphinx-doc__sphinx-7910
 sympy__sympy-20590
 sympy__sympy-13031
+pylint-dev__pylint-4970
 scikit-learn__scikit-learn-12973
 scikit-learn__scikit-learn-25747
 django__django-13512
@@ -294,5 +302,6 @@ django__django-13925
 django__django-14376
 django__django-14404
 matplotlib__matplotlib-20676
+sphinx-doc__sphinx-11445
 sympy__sympy-13551
 sympy__sympy-24562

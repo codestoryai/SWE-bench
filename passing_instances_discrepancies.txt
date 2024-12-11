@@ -1,1 +1,10 @@
+sphinx-doc__sphinx-11445
+sympy__sympy-23534
+django__django-16032
+scikit-learn__scikit-learn-11578
+matplotlib__matplotlib-26342
+pylint-dev__pylint-4970
+matplotlib__matplotlib-22865
+django__django-17029
 django__django-11964
+sphinx-doc__sphinx-7440
