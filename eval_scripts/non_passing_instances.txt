@@ -73,7 +73,6 @@ django__django-15375
 pydata__xarray-4687
 pydata__xarray-7393
 pylint-dev__pylint-7080
-scikit-learn__scikit-learn-12682
 sphinx-doc__sphinx-7985
 sphinx-doc__sphinx-9230
 sphinx-doc__sphinx-9258
@@ -93,7 +92,6 @@ matplotlib__matplotlib-14623
 psf__requests-2931
 pydata__xarray-6599
 sphinx-doc__sphinx-9591
-sympy__sympy-13031
 sympy__sympy-13757
 sympy__sympy-13877
 sympy__sympy-18698
