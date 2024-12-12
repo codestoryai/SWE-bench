@@ -76,6 +76,10 @@ class TestSpec:
         # reponame__reponame-{pull_request_id}
         # so we first split it on the `__` and get the second half o the portion
         # and then use the first part and format our docker image name
+        if self.instance_id == 'matplotlib__matplotlib-26342':
+            return 'xingyaoww/sweb.eval.x86_64.matplotlib_s_matplotlib-26342'
+        if self.instance_id == 'scikit-learn__scikit-learn-11578':
+            return 'xingyaoww/sweb.eval.x86_64.scikit-learn_s_scikit-learn-11578'
         parts = self.instance_id.split('__')
         return f"swebench/sweb.eval.x86_64.{parts[0]}_1776_{parts[1]}:v1"
 

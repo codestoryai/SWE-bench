@@ -45,7 +45,12 @@ async def run_command_for_instance(instance_id, anthropic_api_key, openrouter_ap
             if instance_id.startswith('pytest-dev__pytest-'):
                 docker_name = instance_id.replace('pytest-dev__pytest-', 'pytest-dev_1776_pytest-')
             
-            docker_image = f"swebench/sweb.eval.x86_64.{docker_name}:v1"
+            if instance_id == 'matplotlib__matplotlib-26342':
+                docker_image = 'xingyaoww/sweb.eval.x86_64.matplotlib_s_matplotlib-26342:latest'
+            elif instance_id == 'scikit-learn__scikit-learn-11578':
+                docker_image = 'xingyaoww/sweb.eval.x86_64.scikit-learn_s_scikit-learn-11578:latest'
+            else:
+                docker_image = f"swebench/sweb.eval.x86_64.{docker_name}:v1"
             print(f"\nPulling Docker image: {docker_image}")
             pull_command = f"docker pull {docker_image}"
             
