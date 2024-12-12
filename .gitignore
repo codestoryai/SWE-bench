@@ -170,6 +170,8 @@ cython_debug/
 data/repos/copies
 notebooks/
 *logs/
+*logs_gcp/
+*swebench_logs/
 
 sidecar.*.json
 
