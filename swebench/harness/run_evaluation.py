@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime
 import os
+import random
 import subprocess
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -298,10 +299,23 @@ def start_debug_environment(
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / "run_instance.log"
     logger = setup_logger(test_spec.instance_id, log_file)
-    container = build_container(test_spec, client, run_id, logger, False, False)
-    # Starts a debug container which we can use as our debug environment
-    container.start()
-    return [container, log_dir]
+    
+    # we really balling here
+    max_retries = 10
+    for attempt in range(max_retries):
+        try:
+            container = build_container(test_spec, client, run_id, logger, False, False)
+            # Starts a debug container which we can use as our debug environment
+            container.start()
+            return [container, log_dir]
+        except BuildImageError as e:
+            if "Conflict" in str(e) and attempt < max_retries - 1:
+                run_id_as_int = int(run_id)
+                run_id_as_int += random.randint(1,1000)
+                run_id = str(run_id_as_int)
+                logger.info(f"Container name conflict, retrying with new run_id: {run_id}")
+                continue
+            raise  # Re-raise the exception if we've exhausted retries or it's not a conflict error
 
 def run_terminal_command(
     test_spec: TestSpec,
